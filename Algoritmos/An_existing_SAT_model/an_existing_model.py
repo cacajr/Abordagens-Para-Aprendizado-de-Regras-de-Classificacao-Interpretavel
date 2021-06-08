@@ -3,13 +3,14 @@ import pandas as pd
 import warnings
 import math
 import os
+import time
 from sklearn.model_selection import train_test_split
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
-class an_alternative_model():
-    def __init__(self, numPartition=-1, numClause=2, dataFidelity=10, weightFeature=1, solver="open-wbo", ruleType="DNF",
+class an_existing_model():
+    def __init__(self, numPartition=-1, numLinesPerPartition=16, numClause=2, dataFidelity=10, weightFeature=1, solver="open-wbo", ruleType="DNF",
                  workDir=".", timeOut=1024):
         '''
 
@@ -23,6 +24,7 @@ class an_alternative_model():
         :param verbose: True for debug
         '''
         self.numPartition = numPartition
+        self.numLinesPerPartition = numLinesPerPartition
         self.numClause = numClause
         self.dataFidelity = dataFidelity
         self.weightFeature = weightFeature
@@ -50,42 +52,10 @@ class an_alternative_model():
 
     def getSelectedColumnIndex(self):
         return_list = [[] for i in range(self.numClause)]
-        
-        for i in range(self.numClause):
-            # guarda todas as colunas e suas respectivas polaridades na regra i
-            xHatElem = self.xhat[i]
-            xHatFieldElement = self.xhatField[i]
-
-            # filtro apenas as colunas que irao aparecer na regra guardando o indice
-            inds_nnz = np.where(abs(xHatElem[0:self.columnInfo[-1][-1]//2]) < 1e-4)[0]
-
-            # pra cada coluna, representada pelo seu indice inds, que ira aparecer na regra...
-            for inds in inds_nnz:
-
-                # procuro que tipo de coluna e
-                for t in range(len(self.columnInfo)):
-                    # calculando o valor do literal da coluna nunca maior que o numero de colunas
-                    variable = (abs(int(xHatFieldElement[inds])) - 1) % self.columnInfo[-1][-1] + 1
-
-                    if (self.columnInfo[t][1:].__contains__( variable )):
-                        # se a coluna for binaria ...
-                        if (self.columnInfo[t][0] == 1):
-                            # averiguo a polaridade
-                            if(xHatElem[inds + (self.columnInfo[-1][-1]//2)] > 1e-4):
-                                return_list[i].append(variable - 1)
-                            else:
-                                return_list[i].append((variable - 1) + 1)
-
-                        # se a coluna for categorica ou ordinal ...
-                        elif (self.columnInfo[t][0] == 2 or self.columnInfo[t][0] == 4):
-                            # averiguo a polaridade
-                            if(xHatElem[inds + (self.columnInfo[-1][-1]//2)] > 1e-4):
-                                return_list[i].append(variable - 1)
-                            else:
-                                return_list[i].append((variable - 1) + len(self.columnInfo[t][1:]))
-
-                        break
-
+        ySize = len(self.columns)
+        for elem in self.selectedFeatureIndex:
+            new_index = int(elem)-1
+            return_list[int(new_index/ySize)].append(new_index % ySize)
         return return_list
 
     def getNumOfPartition(self):
@@ -250,7 +220,7 @@ class an_alternative_model():
     def fit(self, XTrain, yTrain):
 
         if(self.numPartition == -1):
-            self.numPartition = 2**math.floor(math.log2(len(XTrain)/16))
+            self.numPartition = 2**math.floor(math.log2(len(XTrain)/self.numLinesPerPartition))
 
             # print("partitions:" + str(self.numPartition))
             
@@ -267,7 +237,7 @@ class an_alternative_model():
             self.learnModel(XTrains[each_partition], yTrains[each_partition], isTest=False)
 
     def predict(self, XTest):
-        ruleIndex = self.getSelectedColumnIndex()
+        rule = self.getSelectedColumnIndex()
         y = []
 
         prediction = 0
@@ -276,18 +246,18 @@ class an_alternative_model():
         for e in range(len(XTest)):
             
             # para cada clausula
-            for j in range(len(ruleIndex)):
+            for j in range(len(rule)):
                 
                 # para cada coluna da clausula
-                for r in range(len(ruleIndex[j])):
+                for r in range(len(rule[j])):
                     if(self.ruleType == 'DNF'):
-                        if(XTest[e][ ruleIndex[j][r] ] == 0):
+                        if(XTest[e][ rule[j][r] ] == 0):
                             prediction = 0
                             break
                         else:
                             prediction = 1
                     elif(self.ruleType == 'CNF'):
-                        if(XTest[e][ ruleIndex[j][r] ] == 1):
+                        if(XTest[e][ rule[j][r] ] == 1):
                             prediction = 1
                             break
                         else:
@@ -367,38 +337,10 @@ class an_alternative_model():
 
         fields = self.pruneRules(fields, self.columnInfo[-1][-1])
 
-        # Tirando possiveis variaveis postas pelo solver
-
-        # Para cada regra j das N regras
-        for j in range(self.numClause):
-
-            # Para cada feature r das K features
-            for r in range(len(self.columnInfo)):
-
-                # Se a coluna for binaria
-                if(self.columnInfo[r][0] == 1):
-                    try:
-                        fields.remove(str(self.columnInfo[r][2] + (j * self.columnInfo[-1][-1])))
-                    except:
-                        fields.remove('-' + str(self.columnInfo[r][2] + (j * self.columnInfo[-1][-1])))
-
-                # Se a coluna for categorica ou ordinal
-                elif(self.columnInfo[r][0] == 3 or self.columnInfo[r][0] == 5):
-                    # Para cada subcoluna sc
-                    for sc in range(1, len(self.columnInfo[r])):
-                        try:
-                            fields.remove(str(self.columnInfo[r][sc] + (j * self.columnInfo[-1][-1])))
-                        except:
-                            fields.remove('-' + str(self.columnInfo[r][sc] + (j * self.columnInfo[-1][-1])))
-
-                # Se não for binaria, categoria ou ordinal e coluna barrada
-                else:
-                    continue
-
         for field in fields:
             if (int(field) > 0):
                 zeroOneSolution.append(1.0)
-
+                    
             else:
                 zeroOneSolution.append(0.0)
 
@@ -407,33 +349,20 @@ class an_alternative_model():
                     TrueRules.append(str(abs(int(field))))
             
         self.xhat = []
-        self.xhatField = []
-        
+
         for i in range(self.numClause):
-            self.xhat.append(
-                np.concatenate((
-                    np.array(zeroOneSolution[i * (self.columnInfo[-1][-1]//2):(i + 1) * (self.columnInfo[-1][-1]//2)]),
-                    np.array(zeroOneSolution[(i * (self.columnInfo[-1][-1]//2)) + self.numClause * (self.columnInfo[-1][-1]//2):((i * (self.columnInfo[-1][-1]//2)) + self.numClause * (self.columnInfo[-1][-1]//2)) + (self.columnInfo[-1][-1]//2)])
-                )) 
-            )
-            
-            self.xhatField.append(
-                np.concatenate((
-                    np.array(fields[i * (self.columnInfo[-1][-1]//2):(i + 1) * (self.columnInfo[-1][-1]//2)]),
-                    np.array(fields[(i * (self.columnInfo[-1][-1]//2)) + self.numClause * (self.columnInfo[-1][-1]//2):((i * (self.columnInfo[-1][-1]//2)) + self.numClause * (self.columnInfo[-1][-1]//2)) + (self.columnInfo[-1][-1]//2)])
-                )) 
-            )
-        
+            self.xhat.append(np.array(zeroOneSolution[i * self.columnInfo[-1][-1]:(i + 1) * self.columnInfo[-1][-1]]))
+
         # delete temp files
         cmd = "rm " + outputFileMaxsat
         os.system(cmd)
 
         if (not isTest):
-            self.assignList = fields[:(self.numClause * (self.columnInfo[-1][-1]//2))+(self.numClause * (self.columnInfo[-1][-1]//2))]
+            self.assignList = fields[:self.numClause * (self.columnInfo[-1][-1])]
             self.trainingError += len(TrueErrors)
             self.selectedFeatureIndex = TrueRules
 
-        return fields[(self.numClause * (self.columnInfo[-1][-1]//2))+(self.numClause * (self.columnInfo[-1][-1]//2)):]
+        return fields[self.numClause * self.columnInfo[-1][-1]:]
 
     def partitionWithEqualProbability(self, X, y):
         '''
@@ -515,107 +444,119 @@ class an_alternative_model():
 
         # MONTANDO CLAUSULAS SOFT, ---------------------------------------------------------------------------------------------------
 
-        # 1.1) ...
+        # 1.1) Criando variaveis soft que garantem o minimo de colunas contida nas regras
 
         # Se o assignList estiver vazio, entao quer dizer que estamos na primeira particao de dados,
-        # logo devemos CRIAR os literais que representam as colunas
-        if(self.assignList == []):  
+        # logo devemos CRIAR os literais que representam as colunas e sua polaridade
+        if(self.assignList == []):
 
             # Para cada regra j das N regras
             for j in range(self.numClause):
 
                 # Para cada feature r das K features
-                for r in range(len(self.columnInfo)):
+                for r in range(len(self.columnInfo)): 
 
                     # Se a coluna for binaria
                     if(self.columnInfo[r][0] == 1):
                         new_clause = str(topWeight) + ' '
 
-                        # Criando as variaveis ¬sjr
-                        new_clause += str(self.columnInfo[r][1] + (j * self.columnInfo[-1][-1])) + ' '
-
-                        new_clause += "0\n"
-                        numClauses += 1
+                        # Para a criacao do literal: pj,r
+                        new_clause += str(self.columnInfo[r][1] + (j * self.columnInfo[-1][-1])) 
+                        new_clause += " 0\n"
                         cnfClauses += new_clause
+
+                        new_clause = str(topWeight) + ' '
+
+                        # Para a criacao do literal: p'j,r
+                        new_clause += str(self.columnInfo[r][2] + (j * self.columnInfo[-1][-1]))
+                        new_clause += " 0\n"
+                        cnfClauses += new_clause
+
+                        additionalVariable += 2
+                        numClauses += 2
+                        
 
                     # Se a coluna for categorica ou ordinal
                     elif(self.columnInfo[r][0] == 2 or self.columnInfo[r][0] == 4):
                         # Para cada subcoluna sc
                         for sc in range(1, len(self.columnInfo[r])):
+
                             new_clause = str(topWeight) + ' '
 
-                            # Criando as variaveis ¬sjr
-                            new_clause += str(self.columnInfo[r][sc] + (j * self.columnInfo[-1][-1])) + ' '
-
-                            new_clause += "0\n"
-                            numClauses += 1
+                            # Para a criacao de dois literais: pj,r
+                            new_clause += str(self.columnInfo[r][sc] + (j * self.columnInfo[-1][-1]))
+                            new_clause += " 0\n"
                             cnfClauses += new_clause
+
+                            new_clause = str(topWeight) + ' '
+
+                            # Para a criacao de dois literais: p'j,r
+                            new_clause += str(self.columnInfo[r+1][sc] + (j * self.columnInfo[-1][-1]))
+                            new_clause += " 0\n"
+                            cnfClauses += new_clause
+
+                            additionalVariable += 2    
+                            numClauses += 2
+                            
 
                     # Se não for binaria, categoria ou ordinal e coluna barrada
                     else:
                         continue
 
-            # Somando o peso das soft's criadas até aqui
-            topWeight = (self.numClause * (self.columnInfo[-1][-1]//2))
-
-        # Se entrar aqui, o assignList guarda literais da ultima particao
+        # Caso o assignList esteja com valores, devemos usa-los
         else:
-            # Percorrendo os literais que representam as colunas e suas polaridades
-            for l in self.assignList[:(self.numClause * (self.columnInfo[-1][-1]//2) * 2)]:
+            # Para cada literal no assignList
+            for l in self.assignList:
                 new_clause = str(topWeight) + ' '
-                new_clause += l + ' '
-                new_clause += "0\n"
-                numClauses += 1
+
+                new_clause += str(l)
+                new_clause += " 0\n"
                 cnfClauses += new_clause
-            
-            # Somando o peso das soft's criadas até aqui
-            topWeight = (self.numClause * (self.columnInfo[-1][-1]//2) * 2)
 
-        # 3.1) Força que todas as regras de todas as linhas cujo y seja = 0, sejam anuladas.
+                additionalVariable += 1    
+                numClauses += 1
 
-        # Percorrendo todas as linhas e da matriz
+        # Atualizando o topWeight
+        topWeight = self.numClause * self.columnInfo[-1][-1]
+
+        # 2.1) Garante que uma linha com y = 0 seja falsa em todas as regras.
+
+        # Para cada linha da matriz de dados ...
         for e in range(len(yVector)):
 
-            # Averiguando se a linha e tem previsao 0
+            # Se essa linha tiver previsao = 0
             if(yVector[e] == 0):
-                # Voltando para a primeira variavel dº¹j,r
-                djr = (self.numClause * self.columnInfo[-1][-1]) + (self.numClause * (self.columnInfo[-1][-1]//2)) + 1
 
                 # Para cada regra j das N regras
                 for j in range(self.numClause):
                     new_clause = str(self.dataFidelity) + ' '
                     topWeight += self.dataFidelity
 
-                    # Para cada feature r das K features
+                    # Para cada feature r das K features da linha e
                     for r in range(len(self.columnInfo)):
 
                         # Se a coluna for binaria
                         if(self.columnInfo[r][0] == 1):
-                            # Averiguando se o valor na matriz na linha e nessa coluna é 0 ou 1
-                            # Caso seja 0, entao coloco dºjr. Caso seja 1, entao coloco d¹jr
-                            if(AMatrix[e][self.columnInfo[r][1] - 1] == 0):
-                                new_clause += str(djr) + ' '
+                            
+                            # Se o valor desse dessa linha e na coluna r for == 1
+                            if(AMatrix[e][self.columnInfo[r][1] - 1] == 1):
+                                new_clause += '-' + str(self.columnInfo[r][2] + (j * self.columnInfo[-1][-1])) + ' ' 
                             else:
-                                new_clause += str(djr + (self.numClause * (self.columnInfo[-1][-1]//2))) + ' '
-
-                            # Passo para o proximo dº¹j,r
-                            djr += 1
-
+                                new_clause += '-' + str(self.columnInfo[r][1] + (j * self.columnInfo[-1][-1])) + ' '
+                        
                         # Se a coluna for categorica ou ordinal
                         elif(self.columnInfo[r][0] == 2 or self.columnInfo[r][0] == 4):
+
                             # Para cada subcoluna sc
                             for sc in range(1, len(self.columnInfo[r])):
-                                # Averiguando se o valor na matriz na linha e nessa coluna é 0 ou 1
-                                # Caso seja 0, entao coloco dºjr. Caso seja 1, entao coloco d¹jr
-                                if(AMatrix[e][self.columnInfo[r][sc] - 1] == 0):
-                                    new_clause += str(djr) + ' '
+
+                                # Se o valor desse dessa linha e na coluna r(sc) for == 1
+                                if(AMatrix[e][self.columnInfo[r][sc] - 1] == 1):
+                                    new_clause += '-' + str(self.columnInfo[r + 1][sc] + (j * self.columnInfo[-1][-1])) + ' ' 
                                 else:
-                                    new_clause += str(djr + (self.numClause * (self.columnInfo[-1][-1]//2))) + ' '
+                                    new_clause += '-' + str(self.columnInfo[r][sc] + (j * self.columnInfo[-1][-1])) + ' '
 
-                                # Passo para o proximo dº¹j,r
-                                djr += 1
-
-                        # Se não for binaria, categoria ou ordinal e coluna barrada
+                        # Se não for binaria, categoria ou ordinal, entao -> coluna barrada
                         else:
                             continue
 
@@ -623,14 +564,13 @@ class an_alternative_model():
                     numClauses += 1
                     cnfClauses += new_clause
 
-        # 5.1) Garante que a linha com y = 1 tem que ser verdadeira em alguma regra.
+        # 4.1 ) Garante que a linha com y = 1 tem que ser verdadeira em alguma regra.
 
-        # Definindo onde as variaveis cj,e vao iniciar (ainda sera incrementado + 1)
-        cje = (self.numClause * self.columnInfo[-1][-1]) + (self.numClause * self.columnInfo[-1][-1]//2) + (2 * self.numClause * (self.columnInfo[-1][-1]//2))
-        cje0 = cje + 1
-        cjef = cje + (self.numClause * yVector.count(1))
+        # Percorrendo as variaveis cr,j
+        #OBS: Como as variáveis cr,j ainda não foram criadas, precisamos prever quantas terão no total
+        additionalVariablePrevision = additionalVariable + self.numClause * yVector.count(1)
 
-        for cr in range(cje0, cjef, self.numClause):
+        for cr in range((self.numClause * self.columnInfo[-1][-1]) + 1, additionalVariablePrevision + 1, self.numClause):
             new_clause = str(self.dataFidelity) + ' '
             topWeight += self.dataFidelity
 
@@ -644,228 +584,97 @@ class an_alternative_model():
             numClauses += 1
             cnfClauses += new_clause
 
-        # MONTANDO CLAUSULAS HARD, ---------------------------------------------------------------------------------------------------
-        
         # Fazendo com que o topWeight seja maior que a soma das softClauses para pesificar as hard's
         topWeight += 1 
 
-        # 1) Garante que pelo menos uma feature esteja em uma regra
+        # MONTANDO CLAUSULAS HARD, ---------------------------------------------------------------------------------------------------
 
+        # 1) Garantindo que duas colunas não estejam ao mesmo tempo com polaridades invertidas. Ex: A ou ¬A, nunca os dois.
+        
         # Para cada regra j das N regras
         for j in range(self.numClause):
-            new_clause = str(topWeight) + ' '
 
             # Para cada feature r das K features
-            for r in range(len(self.columnInfo)):
+            for r in range(len(self.columnInfo)): 
 
                 # Se a coluna for binaria
                 if(self.columnInfo[r][0] == 1):
-                    # Criando as variaveis ¬sjr
-                    new_clause += '-' + str(self.columnInfo[r][1] + (j * self.columnInfo[-1][-1])) + ' '
-                    additionalVariable += 1
+                    new_clause = str(topWeight) + ' '
+
+                    # Para a criacao da clausula: (pj,r V p'j,r)
+                    new_clause += str(self.columnInfo[r][1] + (j * self.columnInfo[-1][-1])) + ' ' + str(self.columnInfo[r][2] + (j * self.columnInfo[-1][-1])) 
+                                                                            
+                    new_clause += " 0\n"
+                    numClauses += 1
+                    cnfClauses += new_clause
 
                 # Se a coluna for categorica ou ordinal
                 elif(self.columnInfo[r][0] == 2 or self.columnInfo[r][0] == 4):
                     # Para cada subcoluna sc
                     for sc in range(1, len(self.columnInfo[r])):
-                        # Criando as variaveis ¬sjr
-                        new_clause += '-' + str(self.columnInfo[r][sc] + (j * self.columnInfo[-1][-1])) + ' '
-                        additionalVariable += 1
+
+                        new_clause = str(topWeight) + ' '
+
+                        # Para a criacao da clausula: (pj,r V p'j,r)
+                        new_clause += str(self.columnInfo[r][sc] + (j * self.columnInfo[-1][-1])) + ' ' + str(self.columnInfo[r+1][sc] + (j * self.columnInfo[-1][-1]))
+                        
+                        new_clause += " 0\n"
+                        numClauses += 1
+                        cnfClauses += new_clause
 
                 # Se não for binaria, categoria ou ordinal e coluna barrada
                 else:
                     continue
-            
-            new_clause += "0\n"
-            numClauses += 1
-            cnfClauses += new_clause
 
-        # 2) Define a variável dº que rejeita as linhas com a feature sendo 0 e o d¹ com as features sendo 1
-        
-        # Definindo onde as variaveis lj,r vao iniciar (ainda sera incrementado + 1)
-        ljr = (self.numClause * self.columnInfo[-1][-1])
-        # Definindo onde as variaveis dj,r vao iniciar (ainda sera incrementado + 1)
-        djr = ljr + (self.numClause * (self.columnInfo[-1][-1]//2))
-
-        # Laco que representa as variaveis dº e d¹
-        for d in range(2):
-
-            # Para cada regra j das N regras
-            for j in range(self.numClause):
-                
-                # Para cada feature r das K features
-                for r in range(len(self.columnInfo)):
-
-                    # Se a coluna for binaria
-                    if(self.columnInfo[r][0] == 1):
-                        # Criando variavel dº¹j,r e lj,r
-                        djr += 1
-                        ljr += 1
-                        # So conto as variaveis lj,r a partir do d¹j,r (quantidade de lj,r e metade de dj,r)
-                        additionalVariable += 1 + (d * 1)
-                        
-                        # (¬dº¹j,r V ¬sjr)
-                        new_clause = str(topWeight) + ' '
-                        new_clause += '-' + str(djr) + ' -' + str(self.columnInfo[r][1] + (j * self.columnInfo[-1][-1]))
-                        
-                        new_clause += " 0\n"
-                        numClauses += 1
-                        cnfClauses += new_clause
-
-                        # (¬dºj,r V lj,r) se dº OU (¬d¹j,r V ¬lj,r) se d¹
-                        new_clause = str(topWeight) + ' '
-                        new_clause += '-' + str(djr) + ' '
-                        if(d == 0):
-                            new_clause += str(ljr)
-                        else:
-                            new_clause += '-' + str(ljr)
-
-                        new_clause += " 0\n"
-                        numClauses += 1
-                        cnfClauses += new_clause
-
-                        # (sj,r V ¬lj,r V dºj,r) se dº OU (sj,r V lj,r V d¹j,r) se d¹
-                        new_clause = str(topWeight) + ' '
-                        new_clause += str(self.columnInfo[r][1] + (j * self.columnInfo[-1][-1])) + ' '
-                        if(d == 0):
-                            new_clause += '-' + str(ljr) + ' '
-                        else:
-                            new_clause += str(ljr) + ' '
-                        new_clause += str(djr)
-
-                        new_clause += " 0\n"
-                        numClauses += 1
-                        cnfClauses += new_clause
-
-                    # Se a coluna for categorica ou ordinal
-                    elif(self.columnInfo[r][0] == 2 or self.columnInfo[r][0] == 4):
-                        # Para cada subcoluna sc
-                        for sc in range(1, len(self.columnInfo[r])):
-                            # Criando variavel dº¹j,r e lj,r
-                            djr += 1
-                            ljr += 1
-                            # So conto as variaveis lj,r a partir do d¹j,r (quantidade de lj,r e metade de dj,r)
-                            additionalVariable += 1 + (d * 1)
-                            
-                            # (¬dº¹j,r V ¬sjr)
-                            new_clause = str(topWeight) + ' '
-                            new_clause += '-' + str(djr) + ' -' + str(self.columnInfo[r][sc] + (j * self.columnInfo[-1][-1]))
-                            
-                            new_clause += " 0\n"
-                            numClauses += 1
-                            cnfClauses += new_clause
-
-                            # (¬dºj,r V lj,r) se dº OU (¬d¹j,r V ¬lj,r) se d¹
-                            new_clause = str(topWeight) + ' '
-                            new_clause += '-' + str(djr) + ' '
-                            if(d == 0):
-                                new_clause += str(ljr)
-                            else:
-                                new_clause += '-' + str(ljr)
-
-                            new_clause += " 0\n"
-                            numClauses += 1
-                            cnfClauses += new_clause
-
-                            # (sj,r V ¬lj,r V dºj,r) se dº OU (sj,r V lj,r V d¹j,r) se d¹
-                            new_clause = str(topWeight) + ' '
-                            new_clause += str(self.columnInfo[r][sc] + (j * self.columnInfo[-1][-1])) + ' '
-                            if(d == 0):
-                                new_clause += '-' + str(ljr) + ' '
-                            else:
-                                new_clause += str(ljr) + ' '
-                            new_clause += str(djr)
-
-                            new_clause += " 0\n"
-                            numClauses += 1
-                            cnfClauses += new_clause
-
-                    # Se não for binaria, categoria ou ordinal e coluna barrada
-                    else:
-                        continue
-
-            # Resetando lj,r
-            ljr = (self.numClause * self.columnInfo[-1][-1])
-        
-        # 4) Define o crj,eq que indica se a linha eq é verdadeira na regra j.
-
-        # Percorrendo todas as linhas e da matriz
+        # 3) ...
         for e in range(len(yVector)):
 
-            # Averiguando se a linha e tem previsao 1
+            # Se essa linha tiver previsao = 1
             if(yVector[e] == 1):
-                # Voltando para a primeira variavel dº¹j,r
-                djr = (self.numClause * self.columnInfo[-1][-1]) + (self.numClause * (self.columnInfo[-1][-1]//2)) + 1
 
                 # Para cada regra j das N regras
                 for j in range(self.numClause):
-                    # Criando variavel cje
-                    cje += 1
+                    # Representa a criacao de uma variável cr,j
                     additionalVariable += 1
-                    # Criando uma clausula auxiliar que guardara os literais djr de cada coluna
-                    aux_clause = ''
-                    
-                    # Para cada feature r das K features
+
+                    # Para cada feature r das K features da linha e
                     for r in range(len(self.columnInfo)):
+                        new_clause = str(topWeight) + ' '
 
                         # Se a coluna for binaria
                         if(self.columnInfo[r][0] == 1):
-                            new_clause = str(topWeight) + ' '
 
-                            new_clause += '-' + str(cje) + ' '
-                            # Averiguando se o valor na matriz na linha e nessa coluna é 0 ou 1
-                            # Caso seja 0, entao coloco dºjr. Caso seja 1, entao coloco d¹jr
-                            if(AMatrix[e][self.columnInfo[r][1] - 1] == 0):
-                                new_clause += '-' + str(djr) + ' '
-                                # Guardo o djr no aux_clause
-                                aux_clause += str(djr) + ' '
+                            # Se o valor desse dessa linha e na coluna r for == 1
+                            if(AMatrix[e][self.columnInfo[r][1] - 1] == 1):
+                                new_clause += str(self.columnInfo[r][2] + (j * self.columnInfo[-1][-1])) + ' -' + str(additionalVariable)
                             else:
-                                new_clause += '-' + str(djr + (self.numClause * (self.columnInfo[-1][-1]//2))) + ' '
-                                # Guardo o djr no aux_clause
-                                aux_clause += str(djr + (self.numClause * (self.columnInfo[-1][-1]//2))) + ' '
+                                new_clause += str(self.columnInfo[r][1] + (j * self.columnInfo[-1][-1])) + ' -' + str(additionalVariable)
 
-                            new_clause += "0\n"
+                            new_clause += " 0\n"
                             numClauses += 1
                             cnfClauses += new_clause
 
-                            # Passo para o proximo dº¹j,r
-                            djr += 1
-
                         # Se a coluna for categorica ou ordinal
                         elif(self.columnInfo[r][0] == 2 or self.columnInfo[r][0] == 4):
+
                             # Para cada subcoluna sc
                             for sc in range(1, len(self.columnInfo[r])):
                                 new_clause = str(topWeight) + ' '
 
-                                new_clause += '-' + str(cje) + ' '
-                                # Averiguando se o valor na matriz na linha e nessa coluna é 0 ou 1
-                                # Caso seja 0, entao coloco dºjr. Caso seja 1, entao coloco d¹jr
-                                if(AMatrix[e][self.columnInfo[r][sc] - 1] == 0):
-                                    new_clause += '-' + str(djr) + ' '
-                                    # Guardo o djr no aux_clause
-                                    aux_clause += str(djr) + ' '
+                                # Se o valor desse dessa linha e na coluna r(sc) for == 1
+                                if(AMatrix[e][self.columnInfo[r][sc] - 1] == 1):
+                                    new_clause += str(self.columnInfo[r + 1][sc] + (j * self.columnInfo[-1][-1])) + ' -' + str(additionalVariable)
                                 else:
-                                    new_clause += '-' + str(djr + (self.numClause * (self.columnInfo[-1][-1]//2))) + ' '
-                                    # Guardo o djr no aux_clause
-                                    aux_clause += str(djr + (self.numClause * (self.columnInfo[-1][-1]//2))) + ' '
+                                    new_clause += str(self.columnInfo[r][sc] + (j * self.columnInfo[-1][-1])) + ' -' + str(additionalVariable)
 
-                                new_clause += "0\n"
+                                new_clause += " 0\n"
                                 numClauses += 1
                                 cnfClauses += new_clause
 
-                                # Passo para o proximo dº¹j,r
-                                djr += 1                   
-
-                        # Se não for binaria, categoria ou ordinal e coluna barrada
+                        # Se não for binaria, categoria ou ordinal, entao -> coluna barrada
                         else:
-                            continue   
-
-                    new_clause = str(topWeight) + ' '
-                    new_clause += aux_clause + str(cje) + ' '
-                    new_clause += "0\n"
-                    numClauses += 1
-                    cnfClauses += new_clause                 
-        
+                            continue
+    
         # write in wcnf format
         header = 'p wcnf ' + str(additionalVariable) + ' ' + str(numClauses) + ' ' + str(topWeight) + '\n'
         f = open(WCNFFile, 'w')
@@ -887,9 +696,6 @@ class an_alternative_model():
         # matriz que guarda os literais positivos de suas repectivas colunas barrada
         variable_contained_list = [[[] for i in range(len(end_of_column_list))] for j in range(self.numClause)]
 
-        # variavel que representa o indice das variaveis l's no array fields
-        l_position = self.numClause * self.columnInfo[-1][-1]
-
         # percorre todas as colunas que estarao na(s) regra(s)
         for i in range(self.numClause * xSize):
             # se o valor do literal nessa coluna for negativo (vai estar na regra) ...
@@ -903,70 +709,13 @@ class an_alternative_model():
                 # percorre todas as colunas adicionadas no end_of_column_list
                 for j in range(len(end_of_column_list)):
 
-                    # Averiguando se o valor do literal e menor ou igual ao valor da coluna guardada no indice j do end_of_column_list
+                    # averiguando se o valor do literal e menor ou igual ao valor da coluna guardada no indice j do end_of_column_list
                     if (variable <= end_of_column_list[j]):
-
-                        # Averiguando se a coluna e normal (binaria), pois se for eu pulo o lj,r dela
-                        if(self.columnInfo[j][0] == 1):
-                            if(variable == self.columnInfo[j][1]):
-                                # Proxima coluna, entao proximo l
-                                l_position += 1
-                            break
-
-                        # Averiguando se a coluna e normal (categorica), pois se for eu pulo o lj,r dela
-                        elif(self.columnInfo[j][0] == 2):
-                            # Proxima coluna, entao proximo l
-                            l_position += 1
-                            break
-                        
-                        # Averiguo se ela e ordinal normal
-                        elif(self.columnInfo[j][0] == 4):
-                            variable_contained_list[clause_position][j].append(clause_position * xSize + variable)
-                            freq_end_of_column_list[clause_position][j][0] += 1
-                            
-                            # Averiguo se a polaridade dela e normal ou barrada
-                            if(int(fields[l_position]) > 0):
-                                freq_end_of_column_list[clause_position][j][1] = self.columnInfo[j][0]
-                            else:
-                                freq_end_of_column_list[clause_position][j][1] = 5
-                            
-                            # Proxima coluna, entao proximo l
-                            l_position += 1
-                            
-                            break
-
-                        # Caso caia aqui, essa coluna nao precisa ser registrada, passo para a proxima
-                        else:
-                            break
-
-            # Se for positivo, preciso averiguar se e alguma coluna normal para contar o indice do lj'r
-            else:
-                # variavel que representa o valor do literal (nunca maior que o valor do literal que representa a ultima coluna)
-                variable = (int(fields[i]) - 1) % xSize + 1
-
-                # percorre todas as colunas adicionadas no end_of_column_list
-                for j in range(len(end_of_column_list)):
-
-                    # Averiguando se o valor do literal e menor ou igual ao valor da coluna guardada no indice j do end_of_column_list
-                    if (variable <= end_of_column_list[j]):
-
-                        # Averiguando se a coluna e normal (binaria), pois se for eu pulo o lj,r dela
-                        if(self.columnInfo[j][0] == 1):
-                            if(variable == self.columnInfo[j][1]):
-                                # Proxima coluna, entao proximo l
-                                l_position += 1
-                            break
-
-                        # Averiguando se a coluna e normal (binaria, categorica), pois se for eu pulo o lj,r dela
-                        elif(self.columnInfo[j][0] == 2 or self.columnInfo[j][0] == 4):
-                            # Proxima coluna, entao proximo lj'r
-                            l_position += 1
-                            break
-
-                        # Caso caia aqui, essa coluna nao precisa ser registrada, passo para a proxima
-                        else:
-                            break
-
+                        variable_contained_list[clause_position][j].append(clause_position * xSize + variable)
+                        freq_end_of_column_list[clause_position][j][0] += 1
+                        freq_end_of_column_list[clause_position][j][1] = self.columnInfo[j][0]
+                        break
+        
         # percorrera o numero de regras
         for l in range(self.numClause):
 
@@ -994,41 +743,10 @@ class an_alternative_model():
     def getRule(self):
         generatedRule = '( '
         for i in range(self.numClause):
-            # guarda todas as colunas e suas respectivas polaridades na regra i
             xHatElem = self.xhat[i]
-            xHatFieldElement = self.xhatField[i]
+            inds_nnz = np.where(abs(xHatElem) < 1e-4)[0]
 
-            # filtro apenas as colunas que irao aparecer na regra guardando o indice
-            inds_nnz = np.where(abs(xHatElem[0:self.columnInfo[-1][-1]//2]) < 1e-4)[0]
-
-            str_clauses = []
-            # pra cada coluna, representada pelo seu indice inds, que ira aparecer na regra...
-            for inds in inds_nnz:
-
-                # procuro que tipo de coluna e
-                for t in range(len(self.columnInfo)):
-                    # calculando o valor do literal da coluna nunca maior que o numero de colunas
-                    variable = (abs(int(xHatFieldElement[inds])) - 1) % self.columnInfo[-1][-1] + 1
-
-                    if (self.columnInfo[t][1:].__contains__( variable )):
-                        # se a coluna for binaria ...
-                        if (self.columnInfo[t][0] == 1):
-                            # averiguo a polaridade
-                            if(xHatElem[inds + (self.columnInfo[-1][-1]//2)] > 1e-4):
-                                str_clauses.append(' '.join(self.columns[variable - 1]))
-                            else:
-                                str_clauses.append(' '.join(self.columns[(variable - 1) + 1]))
-
-                        # se a coluna for categorica ou ordinal ...
-                        elif (self.columnInfo[t][0] == 2 or self.columnInfo[t][0] == 4):
-                            # averiguo a polaridade
-                            if(xHatElem[inds + (self.columnInfo[-1][-1]//2)] > 1e-4):
-                                str_clauses.append(' '.join(self.columns[variable - 1]))
-                            else:
-                                str_clauses.append(' '.join(self.columns[(variable - 1) + len(self.columnInfo[t][1:])]))
-
-                        break
-
+            str_clauses = [' '.join(self.columns[ind]) for ind in inds_nnz]
             if (self.ruleType == "CNF"):
                 rule_sep = ' %s ' % "or"
             else:
@@ -1048,10 +766,10 @@ class an_alternative_model():
 #------------- TESTES --------------------------------------------------------------------
 '''
 #instancio o modelo indicando o nome do exec. do solver que deve está na mesma pasta
-model = an_alternative_model(solver="mifumax-win-mfc_static")
+model = an_existing_model(solver="mifumax-win-mfc_static")
 
 #guardo o endereco da tabela que será usada para a aplicacao do modelo (... -> end. da pasta do projeto)
-arq = r"D:\Área de Trabalho (D)\TCC\Tabela_de_testes\blood_pictures.csv"
+arq = r"D:\Área de Trabalho (D)\TCC\Datasets\parkinsons.csv"
 
 #aplico a discretizacao do modelo na tabela
 X,y=model.discretize(arq)
@@ -1076,12 +794,12 @@ print('==================================')
 print(model.predict(X))
 
 
-print('Score:',model.score(X, y))
+#precisao do teste 
+print('Score:', model.score(X, y))
 
-# printando o numero de regras e o numero da maior regra, respectivamente
-print('Number of rules:', model.getNumOfClause())
-print('Total number of features:', model.getRuleSize())
-print('Number of features of the biggest rule:', model.getBiggestRuleSize())
+# printando a quantidade de regras e a quantidade da maior, respectivamente
+print('Rules number:', model.getRuleSize())
+print('Biggest rule number:', model.getBiggestRuleSize())
 '''
 def get_test_data(X, y, frac):
     # convert to dataframe
@@ -1108,7 +826,11 @@ def get_test_data(X, y, frac):
 
     return X_test, y_test, X_training, y_training
 
-model = an_alternative_model(solver="mifumax-win-mfc_static")
+num_lines_per_partition = [8, 16, 32]
+num_clauses = [1, 2, 3]
+y = [5, 10]
+
+model = an_existing_model(solver="mifumax-win-mfc_static", numLinesPerPartition=16, numClause=2, dataFidelity=10)
 arq = r"D:\Área de Trabalho (D)\TCC\Datasets\parkinsons.csv"
 X, y = model.discretize(arq)
 
@@ -1119,5 +841,6 @@ model.fit(X_training, y_training)
 print('============== RULE ==============')
 print(model.getRule())
 print('==================================')
-print()
-print('SCORE:', model.score(X_test, y_test))
+print('SET OF RULE SIZE: ', model.getRuleSize())
+print('BIGGEST RULE SIZE: ', model.getBiggestRuleSize())
+print('SCORE: ', model.score(X_test, y_test))

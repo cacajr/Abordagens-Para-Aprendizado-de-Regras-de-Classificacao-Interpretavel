@@ -3,14 +3,14 @@ import pandas as pd
 import warnings
 import math
 import os
-import random
+import time
 from sklearn.model_selection import train_test_split
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 class imli():
-    def __init__(self, numPartition=-1, numClause=2, dataFidelity=10, weightFeature=1, solver="open-wbo", ruleType="DNF",
+    def __init__(self, numPartition=-1, numLinesPerPartition=16, numClause=2, dataFidelity=10, weightFeature=1, solver="open-wbo", ruleType="DNF",
                  workDir=".", timeOut=1024):
         '''
 
@@ -24,6 +24,7 @@ class imli():
         :param verbose: True for debug
         '''
         self.numPartition = numPartition
+        self.numLinesPerPartition = numLinesPerPartition
         self.numClause = numClause
         self.dataFidelity = dataFidelity
         self.weightFeature = weightFeature
@@ -77,6 +78,23 @@ class imli():
 
     def getSolver(self):
         return self.solver
+
+    def getRuleSize(self):
+        ruleIndex = self.getSelectedColumnIndex()
+        sR = 0
+        for j in range(len(ruleIndex)):
+            sR += len(ruleIndex[j])
+        
+        return sR
+
+    def getBiggestRuleSize(self):
+        ruleIndex = self.getSelectedColumnIndex()
+        bR = 0
+        for j in range(len(ruleIndex)):
+            if (len(ruleIndex[j]) >= bR):
+                bR = len(ruleIndex[j])
+        
+        return bR
 
     def discretize(self, file, categoricalColumnIndex=[], columnSeperator=",", fracPresent=0.9, numThreshold=4):
 
@@ -195,7 +213,7 @@ class imli():
     def fit(self, XTrain, yTrain):
 
         if(self.numPartition == -1):
-            self.numPartition = 2**math.floor(math.log2(len(XTrain)/16))
+            self.numPartition = 2**math.floor(math.log2(len(XTrain)/self.numLinesPerPartition))
 
             # print("partitions:" + str(self.numPartition))
             
@@ -611,6 +629,7 @@ print('======= RULES =======')
 print(rule)
 print('=====================')
 '''
+'''
 def get_test_data(X, y, frac):
     # convert to dataframe
     df_X = pd.DataFrame(X)
@@ -636,16 +655,30 @@ def get_test_data(X, y, frac):
 
     return X_test, y_test, X_training, y_training
 
-model = imli(solver="mifumax-win-mfc_static")
 arq = r"D:\Área de Trabalho (D)\TCC\Datasets\parkinsons.csv"
-X, y = model.discretize(arq)
+
+num_lines_per_partition = [8, 16, 32]
+num_clauses = [1, 2, 3]
+lambda_params = [5, 10]
+
+model = imli(solver="mifumax-win-mfc_static", numLinesPerPartition=16, numClause=2, dataFidelity=10)
+X, y = model.discretize(arq) #, categoricalColumnIndex=[1, 3, 5, 6, 7, 8, 9, 13]
 
 X_test, y_test, X_training, y_training = get_test_data(X, y, 0.2)
 
+startTime = time.time()
 model.fit(X_training, y_training)
+endTime = time.time()
+
+rule = model.getRule()
+
+score = model.score(X_test, y_test)
 
 print('============== RULE ==============')
-print(model.getRule())
+print(rule)
 print('==================================')
-print()
-print('SCORE:', model.score(X_test, y_test))
+print('SET OF RULE SIZE: ', model.getRuleSize())
+print('BIGGEST RULE SIZE: ', model.getBiggestRuleSize())
+print('SCORE: ', score)
+print('TIME DURATION (training): ', (endTime - startTime),'s')
+'''
