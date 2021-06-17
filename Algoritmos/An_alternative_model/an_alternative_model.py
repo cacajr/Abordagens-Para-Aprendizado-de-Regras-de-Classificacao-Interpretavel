@@ -1085,6 +1085,7 @@ print('Number of rules:', model.getNumOfClause())
 print('Total number of features:', model.getRuleSize())
 print('Number of features of the biggest rule:', model.getBiggestRuleSize())
 '''
+'''
 def get_test_data(X, y, frac):
     # convert to dataframe
     df_X = pd.DataFrame(X)
@@ -1128,3 +1129,4 @@ print('==================================')
 print('SET OF RULE SIZE: ', model.getRuleSize())
 print('BIGGEST RULE SIZE: ', model.getBiggestRuleSize())
 print('SCORE: ', model.score(X_test, y_test))
+'''
