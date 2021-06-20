@@ -1,5 +1,16 @@
+from Solvers.RC2.bin.pysat.examples.rc2 import RC2
+from Solvers.RC2.bin.pysat.formula import WCNF
+
+wcnf = WCNF(from_file='./model.wcnf')
+
+with RC2(wcnf) as rc2:
+    for m in rc2.enumerate():
+        print('model {0} has cost {1}'.format(m, rc2.cost))
+
+'''
 import pandas as pd
 import csv
+import os
 
 from Algoritmos.IMLI.imli import imli
 from Algoritmos.An_existing_SAT_model.an_existing_model import an_existing_model as IKKRR
@@ -19,8 +30,7 @@ def save_files_test_and_training(arq, frac_test, address):
 
 arq = r"D:\Área de Trabalho (D)\TCC\Datasets\transfusion.csv"
 save_files_test_and_training(arq, 0.1, "./test_and_training_files")
-
-
+'''
 '''
 def average(matrix):
     average_each_column = []

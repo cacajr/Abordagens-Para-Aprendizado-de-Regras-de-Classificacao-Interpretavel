@@ -42,9 +42,9 @@ def get_test_data(X, y, frac, lines=[]):
     return X_test, y_test, X_training, y_training, df_Xy_test.index.tolist()
 
 # DATASET ADDRESS, NAME AND CATEGORICAL COLUMNS
-arq = r"D:\Área de Trabalho (D)\TCC\Datasets\toms.csv"
-name = 'toms'
-columns = []
+arq = r"D:\Área de Trabalho (D)\TCC\Datasets\twitter.csv"
+name = 'twitter'
+columns = [42, 43, 44, 45, 46, 47, 48]
 
 # DATASET DISCRETIZATION
 model1 = imli()
