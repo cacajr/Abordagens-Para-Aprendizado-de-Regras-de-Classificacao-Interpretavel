@@ -51,6 +51,8 @@ model1 = imli()
 X1, y1 = model1.discretize(arq, categoricalColumnIndex=columns)
 model2 = IKKRR()
 X2, y2 = model2.discretize(arq, categoricalColumnIndex=columns)
+model3 = IMinDS()
+X3, y3 = model3.discretize(arq, categoricalColumnIndex=columns)
 
 # MODELS CONFIGURATIONS
 num_lines_per_partition = [8, 16]
@@ -66,11 +68,13 @@ rounds = 10
 for i in range(rounds):
     # DATASET SEPARATION (TRAINING and TEST)
     X_test_imli, y_test_imli, X_training_imli, y_training_imli, lines_imli = get_test_data(X1, y1, 0.1)
-    X_test, y_test, X_training, y_training, lines = get_test_data(X2, y2, 0.1, lines_imli)
+    X_test_ikkrr, y_test_ikkrr, X_training_ikkrr, y_training_ikkrr, lines = get_test_data(X2, y2, 0.1, lines_imli)
+    X_test_iminds, y_test_iminds, X_training_iminds, y_training_iminds, lines = get_test_data(X3, y3, 0.1, lines_imli)
 
     # DATASET TRAINING SEPARATION (TRAINING and TEST)
     X_training_test_imli, y_training_test_imli, X_training_training_imli, y_training_training_imli, lines_imli = get_test_data(X_training_imli, y_training_imli, 0.1)
-    X_training_test, y_training_test, X_training_training, y_training_training, lines = get_test_data(X_training, y_training, 0.1, lines_imli)
+    X_training_test_ikkrr, y_training_test_ikkrr, X_training_training_ikkrr, y_training_training_ikkrr, lines = get_test_data(X_training_ikkrr, y_training_ikkrr, 0.1, lines_imli)
+    X_training_test_iminds, y_training_test_iminds, X_training_training_iminds, y_training_training_iminds, lines = get_test_data(X_training_iminds, y_training_iminds, 0.1, lines_imli)
 
     # ACCURACY INFORMATION FOR EACH MODEL. EX: [['config1', ..., 'config18'], [0.70, ..., 0.83]]
     configuration_and_accuracy_imli = [[],[]]
@@ -91,18 +95,18 @@ for i in range(rounds):
 
                 # TRAINING MODELS WITH DATASET TRAINING's TRAINING
                 model_imli.fit(X_training_training_imli, y_training_training_imli)
-                model_ikkrr.fit(X_training_training, y_training_training)
-                model_iminds.fit(X_training_training, y_training_training)
+                model_ikkrr.fit(X_training_training_ikkrr, y_training_training_ikkrr)
+                model_iminds.fit(X_training_training_iminds, y_training_training_iminds)
 
                 # GETTING ACCURACY'S MODELS AND SAVE INFORMATIONS
                 configuration_and_accuracy_imli[0].append('lpp: '+str(lpp)+' | nc: '+str(nc)+' | lp: '+str(lp))
                 configuration_and_accuracy_imli[1].append(model_imli.score(X_training_test_imli, y_training_test_imli))
 
                 configuration_and_accuracy_ikkrr[0].append('lpp: '+str(lpp)+' | nc: '+str(nc)+' | lp: '+str(lp))
-                configuration_and_accuracy_ikkrr[1].append(model_ikkrr.score(X_training_test, y_training_test))
+                configuration_and_accuracy_ikkrr[1].append(model_ikkrr.score(X_training_test_ikkrr, y_training_test_ikkrr))
 
                 configuration_and_accuracy_iminds[0].append('lpp: '+str(lpp)+' | nc: '+str(nc)+' | lp: '+str(lp))
-                configuration_and_accuracy_iminds[1].append(model_iminds.score(X_training_test, y_training_test))
+                configuration_and_accuracy_iminds[1].append(model_iminds.score(X_training_test_iminds, y_training_test_iminds))
 
                 f = open('./logs/'+name+'_test_informations.csv', 'w', newline='', encoding='utf-8')
                 w = csv.writer(f)
@@ -141,11 +145,11 @@ for i in range(rounds):
     end_time_imli = time.time()
 
     start_time_ikkrr = time.time()
-    model_ikkrr.fit(X_training, y_training)
+    model_ikkrr.fit(X_training_ikkrr, y_training_ikkrr)
     end_time_ikkrr = time.time()
 
     start_time_iminds = time.time()
-    model_iminds.fit(X_training, y_training)
+    model_iminds.fit(X_training_iminds, y_training_iminds)
     end_time_iminds = time.time()
 
     # GETTING SIZE'S SET OF RULES (|R|), BIGGEST RULE (max(R)), ACCURACY AND TIME TRAINING TO EACH MODEL AND SAVE INFORMATIONS
@@ -157,13 +161,13 @@ for i in range(rounds):
 
     size_set_of_rules_ikkrr = model_ikkrr.getRuleSize()
     size_biggest_rule_ikkrr = model_ikkrr.getBiggestRuleSize()
-    accuracy_ikkrr = model_ikkrr.score(X_test, y_test)
+    accuracy_ikkrr = model_ikkrr.score(X_test_ikkrr, y_test_ikkrr)
     time_training_ikkrr = end_time_ikkrr - start_time_ikkrr
     performance_ikkrr.append([best_configuration_ikkrr, size_set_of_rules_ikkrr, size_biggest_rule_ikkrr, accuracy_ikkrr, time_training_ikkrr])
 
     size_set_of_rules_iminds = model_iminds.getRuleSize()
     size_biggest_rule_iminds = model_iminds.getBiggestRuleSize()
-    accuracy_iminds = model_iminds.score(X_test, y_test)
+    accuracy_iminds = model_iminds.score(X_test_iminds, y_test_iminds)
     time_training_iminds = end_time_iminds - start_time_iminds
     performance_iminds.append([best_configuration_iminds, size_set_of_rules_iminds, size_biggest_rule_iminds, accuracy_iminds, time_training_iminds])
 
