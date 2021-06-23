@@ -43,16 +43,16 @@ def get_test_data(X, y, frac, lines=[]):
 
 # DATASET ADDRESS, NAME AND CATEGORICAL COLUMNS
 arq = r"D:\Área de Trabalho (D)\TCC\Datasets\twitter.csv"
-name = 'twitter'
-columns = [42, 43, 44, 45, 46, 47, 48]
+name = 'twitter(3)'
+categorical_columns = [42, 43, 44, 45, 46, 47, 48]
 
 # DATASET DISCRETIZATION
 model1 = imli()
-X1, y1 = model1.discretize(arq, categoricalColumnIndex=columns)
+X1, y1, column_info_imli, columns_imli = model1.discretize(arq, categoricalColumnIndex=categorical_columns)
 model2 = IKKRR()
-X2, y2 = model2.discretize(arq, categoricalColumnIndex=columns)
+X2, y2, column_info_ikkrr, columns_ikkrr = model2.discretize(arq, categoricalColumnIndex=categorical_columns)
 model3 = IMinDS()
-X3, y3 = model3.discretize(arq, categoricalColumnIndex=columns)
+X3, y3, column_info_iminds, columns_iminds = model3.discretize(arq, categoricalColumnIndex=categorical_columns)
 
 # MODELS CONFIGURATIONS
 num_lines_per_partition = [8, 16]
@@ -86,12 +86,9 @@ for i in range(rounds):
         for nc in num_clauses:
             for lp in lambda_params:
                 # MODELS INSTANCE WITH CONFIGURATION
-                model_imli = imli(solver="mifumax-win-mfc_static", numLinesPerPartition=lpp, numClause=nc, dataFidelity=lp)
-                model_imli.discretize(arq, categoricalColumnIndex=columns)
-                model_ikkrr = IKKRR(solver="mifumax-win-mfc_static", numLinesPerPartition=lpp, numClause=nc, dataFidelity=lp)
-                model_ikkrr.discretize(arq, categoricalColumnIndex=columns)
-                model_iminds = IMinDS(solver="mifumax-win-mfc_static", numLinesPerPartition=lpp, numClause=nc, dataFidelity=lp)
-                model_iminds.discretize(arq, categoricalColumnIndex=columns)
+                model_imli = imli(solver="mifumax-win-mfc_static", numLinesPerPartition=lpp, numClause=nc, dataFidelity=lp, columnInfo=column_info_imli, columns=columns_imli)
+                model_ikkrr = IKKRR(solver="mifumax-win-mfc_static", numLinesPerPartition=lpp, numClause=nc, dataFidelity=lp, columnInfo=column_info_ikkrr, columns=columns_ikkrr)
+                model_iminds = IMinDS(solver="mifumax-win-mfc_static", numLinesPerPartition=lpp, numClause=nc, dataFidelity=lp, columnInfo=column_info_iminds, columns=columns_iminds)
 
                 # TRAINING MODELS WITH DATASET TRAINING's TRAINING
                 model_imli.fit(X_training_training_imli, y_training_training_imli)
@@ -132,12 +129,9 @@ for i in range(rounds):
     configuration_iminds = [int(s) for s in re.findall(r'\b\d+\b', best_configuration_iminds)]
 
     # MODELS INSTANCE WITH THE BEST CONFIGURATION
-    model_imli = imli(solver="mifumax-win-mfc_static", numLinesPerPartition=configuration_imli[0], numClause=configuration_imli[1], dataFidelity=configuration_imli[2])
-    model_imli.discretize(arq, categoricalColumnIndex=columns)
-    model_ikkrr = IKKRR(solver="mifumax-win-mfc_static", numLinesPerPartition=configuration_ikkrr[0], numClause=configuration_ikkrr[1], dataFidelity=configuration_ikkrr[2])
-    model_ikkrr.discretize(arq, categoricalColumnIndex=columns)
-    model_iminds = IMinDS(solver="mifumax-win-mfc_static", numLinesPerPartition=configuration_iminds[0], numClause=configuration_iminds[1], dataFidelity=configuration_iminds[2])
-    model_iminds.discretize(arq, categoricalColumnIndex=columns)
+    model_imli = imli(solver="mifumax-win-mfc_static", numLinesPerPartition=configuration_imli[0], numClause=configuration_imli[1], dataFidelity=configuration_imli[2], columnInfo=column_info_imli, columns=columns_imli)
+    model_ikkrr = IKKRR(solver="mifumax-win-mfc_static", numLinesPerPartition=configuration_ikkrr[0], numClause=configuration_ikkrr[1], dataFidelity=configuration_ikkrr[2], columnInfo=column_info_ikkrr, columns=columns_ikkrr)
+    model_iminds = IMinDS(solver="mifumax-win-mfc_static", numLinesPerPartition=configuration_iminds[0], numClause=configuration_iminds[1], dataFidelity=configuration_iminds[2], columnInfo=column_info_iminds, columns=columns_iminds)
 
     # TRAINING MODELS WITH DATASET TRAINING AND TAKING THE TIME
     start_time_imli = time.time()

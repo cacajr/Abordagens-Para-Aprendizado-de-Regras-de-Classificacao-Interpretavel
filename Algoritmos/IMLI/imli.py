@@ -11,7 +11,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 class imli():
     def __init__(self, numPartition=-1, numLinesPerPartition=16, numClause=2, dataFidelity=10, weightFeature=1, solver="open-wbo", ruleType="DNF",
-                 workDir=".", timeOut=1024):
+                 workDir=".", timeOut=1024, columnInfo=[], columns=[]):
         '''
 
         :param numPartition: no of partitions of training dataset
@@ -34,8 +34,9 @@ class imli():
         self.verbose = False  # not necessary
         self.trainingError = 0
         self.selectedFeatureIndex = []
-        self.columns = []
+        self.columns = columns
         self.timeOut = timeOut
+        self.columnInfo = columnInfo
 
     def __repr__(self):
         return "imli: -->  \nnumPartition:%s \nnumClause:%s \ndataFidelity:%s \nweightFeature:%s " \
@@ -131,7 +132,7 @@ class imli():
         X = pd.DataFrame(columns=pd.MultiIndex.from_arrays([[], [], []], names=['feature', 'operation', 'value']))
         thresh = {}
         column_counter = 1
-        self.columnInfo = []
+        # self.columnInfo = []
         # Iterate over columns
         count = 0
         for c in data:
@@ -208,7 +209,7 @@ class imli():
                 continue
             count += 1
         self.columns = X.columns
-        return X.as_matrix(), y.values.ravel()
+        return X.as_matrix(), y.values.ravel(), self.columnInfo, self.columns
 
     def fit(self, XTrain, yTrain):
 
