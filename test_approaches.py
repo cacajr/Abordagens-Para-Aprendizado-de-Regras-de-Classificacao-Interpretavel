@@ -43,7 +43,7 @@ def get_test_data(X, y, frac, lines=[]):
 
 # DATASET ADDRESS, NAME AND CATEGORICAL COLUMNS
 arq = r"D:\Área de Trabalho (D)\TCC\Datasets\toms.csv"
-name = 'toms(3)'
+name = 'toms'
 categorical_columns = []
 
 # DATASET DISCRETIZATION
