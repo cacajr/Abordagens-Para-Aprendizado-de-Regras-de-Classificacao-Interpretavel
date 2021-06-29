@@ -42,8 +42,8 @@ def get_test_data(X, y, frac, lines=[]):
     return X_test, y_test, X_training, y_training, df_Xy_test.index.tolist()
 
 # DATASET ADDRESS, NAME AND CATEGORICAL COLUMNS
-arq = r"D:\Área de Trabalho (D)\TCC\Datasets\lung_cancer_examples.csv"
-name = 'lung_cancer_examples'
+arq = r"D:\Área de Trabalho (D)\TCC\Datasets\lung_cancer.csv"
+name = 'lung_cancer'
 categorical_columns = []
 
 # DATASET DISCRETIZATION
