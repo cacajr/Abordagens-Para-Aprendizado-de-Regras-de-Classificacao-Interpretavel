@@ -216,7 +216,7 @@ class an_existing_model():
                 continue
             count += 1
         self.columns = X.columns
-        return X.as_matrix(), y.values.ravel(), self.columnInfo, self.columns
+        return X.values, y.values.ravel(), self.columnInfo, self.columns
 
     def fit(self, XTrain, yTrain):
 
@@ -380,7 +380,7 @@ class an_existing_model():
             :return:
             '''
         partition_count = self.numPartition
-        # y = y.values.ravel()
+        # y = y.values().ravel()
         max_y = int(y.max())
         min_y = int(y.min())
 
@@ -819,12 +819,12 @@ def get_test_data(X, y, frac):
 
     # desconcat dataframe X - y and convert to matrix and vector respectively
     # test
-    X_test = df_Xy_test.drop('P', axis=1).as_matrix()
-    y_test = df_Xy_test['P'].values.ravel()
+    X_test = df_Xy_test.drop('P', axis=1).values()
+    y_test = df_Xy_test['P'].values().ravel()
 
     # training
-    X_training = df_Xy_training.drop('P', axis=1).as_matrix()
-    y_training = df_Xy_training['P'].values.ravel()
+    X_training = df_Xy_training.drop('P', axis=1).values()
+    y_training = df_Xy_training['P'].values().ravel()
 
     return X_test, y_test, X_training, y_training
 

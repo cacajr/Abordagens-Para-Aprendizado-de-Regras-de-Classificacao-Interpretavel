@@ -248,7 +248,7 @@ class an_alternative_model():
                 continue
             count += 1
         self.columns = X.columns
-        return X.as_matrix(), y.values.ravel(), self.columnInfo, self.columns
+        return X.values, y.values.ravel(), self.columnInfo, self.columns
 
     def fit(self, XTrain, yTrain):
 
@@ -1047,87 +1047,3 @@ class an_alternative_model():
         generatedRule += ')'
 
         return generatedRule
-
-#------------- TESTES --------------------------------------------------------------------
-'''
-#instancio o modelo indicando o nome do exec. do solver que deve está na mesma pasta
-model = an_alternative_model(solver="mifumax-win-mfc_static")
-
-#guardo o endereco da tabela que será usada para a aplicacao do modelo (... -> end. da pasta do projeto)
-arq = r"D:\Área de Trabalho (D)\TCC\Tabela_de_testes\blood_pictures.csv"
-
-#aplico a discretizacao do modelo na tabela
-X,y=model.discretize(arq)
-
-#treinando o modelo usando a discretizacao da tabela
-model.fit(X,y)
-
-#guardando as regras geradas pelo treino
-rule = model.getRule()
-print('============== RULE ==============')
-print(rule)
-print('==================================')
-
-
-#indice das colunas que estao na regra
-columnsError = model.getSelectedColumnIndex()
-print('======= RULES COLUMN INDEX =======')
-print(columnsError)
-print('==================================')
-
-#previsao do teste
-print(model.predict(X))
-
-
-print('Score:',model.score(X, y))
-
-# printando o numero de regras e o numero da maior regra, respectivamente
-print('Number of rules:', model.getNumOfClause())
-print('Total number of features:', model.getRuleSize())
-print('Number of features of the biggest rule:', model.getBiggestRuleSize())
-'''
-'''
-def get_test_data(X, y, frac):
-    # convert to dataframe
-    df_X = pd.DataFrame(X)
-    df_y = pd.DataFrame(y, columns=['P'])
-
-    # concat dataframes X + y
-    df_Xy = pd.concat([df_X, df_y], axis=1)
-
-    # get % test
-    df_Xy_test = df_Xy.sample(frac=frac)
-
-    # create dataframe without samples (training)
-    df_Xy_training = df_Xy.drop(df_Xy_test.index.tolist())
-
-    # desconcat dataframe X - y and convert to matrix and vector respectively
-    # test
-    X_test = df_Xy_test.drop('P', axis=1).as_matrix()
-    y_test = df_Xy_test['P'].values.ravel()
-
-    # training
-    X_training = df_Xy_training.drop('P', axis=1).as_matrix()
-    y_training = df_Xy_training['P'].values.ravel()
-
-    return X_test, y_test, X_training, y_training
-
-num_lines_per_partition = [8, 16, 32]
-num_clauses = [1, 2, 3]
-y = [5, 10]
-
-model = an_alternative_model(solver="mifumax-win-mfc_static", numLinesPerPartition=16, numClause=2, dataFidelity=10)
-arq = r"D:\Área de Trabalho (D)\TCC\Datasets\parkinsons.csv"
-X, y = model.discretize(arq)
-
-X_test, y_test, X_training, y_training = get_test_data(X, y, 0.2)
-
-model.fit(X_training, y_training)
-
-print('============== RULE ==============')
-print(model.getRule())
-print('==================================')
-print('SET OF RULE SIZE: ', model.getRuleSize())
-print('BIGGEST RULE SIZE: ', model.getBiggestRuleSize())
-print('SCORE: ', model.score(X_test, y_test))
-'''
