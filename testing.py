@@ -4,40 +4,7 @@ from Algoritmos.IMLI.imli import imli
 from Algoritmos.An_existing_SAT_model.an_existing_model import an_existing_model as IKKRR
 from Algoritmos.An_alternative_model.an_alternative_model import an_alternative_model as IMinDS
 
-
-def get_test_data(X, y, frac, lines=[]):
-    # convert to dataframe
-    df_X = pd.DataFrame(X)
-    df_y = pd.DataFrame(y, columns=['P'])
-
-    # concat dataframes X + y
-    df_Xy = pd.concat([df_X, df_y], axis=1)
-
-    df_Xy_test = pd.DataFrame()
-    df_Xy_training = pd.DataFrame()
-    if(lines == []):
-        # get % test
-        df_Xy_test = df_Xy.sample(frac=frac)
-
-        # create dataframe without samples (training)
-        df_Xy_training = df_Xy.drop(df_Xy_test.index.tolist())
-    else:
-        # get % test
-        df_Xy_test = df_Xy.loc[lines]
-
-        # create dataframe without samples (training)
-        df_Xy_training = df_Xy.drop(lines)
-
-    # desconcat dataframe X - y and convert to matrix and vector respectively
-    # test
-    X_test = df_Xy_test.drop('P', axis=1).values
-    y_test = df_Xy_test['P'].values.ravel()
-
-    # training
-    X_training = df_Xy_training.drop('P', axis=1).values
-    y_training = df_Xy_training['P'].values.ravel()
-
-    return X_test, y_test, X_training, y_training, df_Xy_test.index.tolist()
+from test_approaches import get_test_data
 
 # DATASET ADDRESS, NAME AND CATEGORICAL COLUMNS
 arq = './Datasets/lung_cancer.csv'
