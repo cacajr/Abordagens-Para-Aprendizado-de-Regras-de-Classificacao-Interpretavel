@@ -1,7 +1,4 @@
 import pandas as pd
-import re
-import time
-import csv
 
 from Algoritmos.IMLI.imli import imli
 from Algoritmos.An_existing_SAT_model.an_existing_model import an_existing_model as IKKRR
