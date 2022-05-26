@@ -1,0 +1,168 @@
+Tabela exemplo 1:
+
+   A B C y
+e1 1 1 1 1
+e2 0 0 1 0
+e3 1 0 1 0
+
+Número de regras = 2
+
+--------------------------------------------------------------------------------
+
+1) Garante que pelo menos uma feature esteja em uma regra
+
+(¬s1,A V ¬s1,B V ¬s1,C)
+(¬s2,A V ¬s2,B V ¬s2,C)
+
+2) Define a variável dº que rejeita as linhas com a feature
+sendo 0 e o d¹ com as features sendo 1
+
+(¬dº1,A V ¬s1,A)
+(¬dº1,A V l1,A)
+(s1,A V ¬l1,A V dº1,A)
+(¬dº1,B V ¬s1,B)
+(¬dº1,B V l1,B)
+(s1,B V ¬l1,B V dº1,B)
+(¬dº1,C V ¬s1,C)
+(¬dº1,C V l1,C)
+(s1,C V ¬l1,C V dº1,C)
+
+(¬dº2,A V ¬s2,A)
+(¬dº2,A V l2,A)
+(s2,A V ¬l2,A V dº2,A)
+(¬dº2,B V ¬s2,B)
+(¬dº2,B V l2,B)
+(s2,B V ¬l2,B V dº2,B)
+(¬dº2,C V ¬s2,C)
+(¬dº2,C V l2,C)
+(s2,C V ¬l2,C V dº2,C)
+
+(¬d¹1,A V ¬s1,A)
+(¬d¹1,A V ¬l1,A)
+(s1,A V l1,A V d¹1,A)
+(¬d¹1,B V ¬s1,B)
+(¬d¹1,B V ¬l1,B)
+(s1,B V l1,B V d¹1,B)
+(¬d¹1,C V ¬s1,C)
+(¬d¹1,C V ¬l1,C)
+(s1,C V l1,C V d¹1,C)
+
+(¬d¹2,A V ¬s2,A)
+(¬d¹2,A V ¬l2,A)
+(s2,A V l2,A V d¹2,A)
+(¬d¹2,B V ¬s2,B)
+(¬d¹2,B V ¬l2,B)
+(s2,B V l2,B V d¹2,B)
+(¬d¹2,C V ¬s2,C)
+(¬d¹2,C V ¬l2,C)
+(s2,C V l2,C V d¹2,C)
+
+3) Força que todas as regras de todas as linhas, cujo y seja = 0,
+sejam anuladas. E as que o y seja = 1, sejam positivadas
+
+e1
+c1 V (d¹1,A V d¹1,B V d¹1,C)
+c2 V (d¹2,A V d¹2,B V d¹2,C)
+
+e2
+¬c1 V (dº1,A V dº1,B V d¹1,C)
+¬c2 V (dº2,A V dº2,B V d¹2,C)
+
+e3
+¬c1 V (d¹1,A V dº1,B V d¹1,C)
+¬c2 V (d¹2,A V dº2,B V d¹2,C)
+
+4.1) Restrições que garantem que uma regra cobre algum exemplo seja com y = 0 ou y = 1
+
+e2
+cr1,e2 <-> (¬c1 ^ dº1,A ^ dº1,B ^ d¹1,C)
+cr2,e2 <-> (¬c2 ^ dº2,A ^ dº2,B ^ d¹2,C)
+
+e3
+cr1,e3 <-> (¬c1 ^ d¹1,A ^ dº1,B ^ d¹1,C)
+cr2,e3 <-> (¬c2 ^ d¹2,A ^ dº2,B ^ d¹2,C)
+
+e1
+cr1,e1 <-> (c1 ^ d¹1,A ^ d¹1,B ^ d¹1,C)
+cr2,e1 <-> (c2 ^ d¹2,A ^ d¹2,B ^ d¹2,C)
+
+Equivalencia:
+e2
+cr1,e2 -> (¬c1 ^ dº1,A ^ dº1,B ^ d¹1,C) =
+¬cr1,e2 V (¬c1 ^ dº1,A ^ dº1,B ^ d¹1,C) =
+
+- (¬cr1,e2 V ¬c1)
+- (¬cr1,e2 V dº1,A)
+- (¬cr1,e2 V dº1,B)
+- (¬cr1,e2 V d¹1,C)
+
+cr1,e2 <- (¬c1 ^ dº1,A ^ dº1,B ^ d¹1,C) =
+cr1,e2 V ¬(¬c1 ^ dº1,A ^ dº1,B ^ d¹1,C) =
+
+- (cr1,e2 V c1 V ¬dº1,A V ¬dº1,B V ¬d¹1,C)
+
+e3
+cr1,e3 -> (¬c1 ^ d¹1,A ^ dº1,B ^ d¹1,C) =
+¬cr1,e3 V (¬c1 ^ d¹1,A ^ dº1,B ^ d¹1,C) =
+
+- (¬cr1,e3 V ¬c1)
+- (¬cr1,e3 V d¹1,A)
+- (¬cr1,e3 V dº1,B)
+- (¬cr1,e3 V d¹1,C)
+
+cr1,e3 <- (¬c1 ^ d¹1,A ^ dº1,B ^ d¹1,C) =
+cr1,e3 V ¬(¬c1 ^ d¹1,A ^ dº1,B ^ d¹1,C) =
+
+- (cr1,e3 V c1 V ¬d¹1,A V ¬dº1,B V ¬d¹1,C)
+
+e1
+cr1,e1 -> (c1 ^ d¹1,A ^ d¹1,B ^ d¹1,C) =
+¬cr1,e1 V (c1 ^ d¹1,A ^ d¹1,B ^ d¹1,C) =
+
+- (¬cr1,e1 V c1)
+- (¬cr1,e1 V d¹1,A)
+- (¬cr1,e1 V d¹1,B)
+- (¬cr1,e1 V d¹1,C)
+
+cr1,e1 <- (c1 ^ d¹1,A ^ d¹1,B ^ d¹1,C) =
+cr1,e1 V ¬(c1 ^ d¹1,A ^ d¹1,B ^ d¹1,C) =
+
+- (cr1,e1 V ¬c1 V ¬d¹1,A V ¬d¹1,B V ¬d¹1,C)
+
+Sendo assim, as novas cláusulas ficarão da seguinte maneira:
+(¬cr1,e2 V ¬c1)
+(¬cr1,e2 V dº1,A)
+(¬cr1,e2 V dº1,B)
+(¬cr1,e2 V d¹1,C)
+(cr1,e2 V c1 V ¬dº1,A V ¬dº1,B V ¬d¹1,C)
+
+(¬cr2,e2 V ¬c2)
+(¬cr2,e2 V dº2,A)
+(¬cr2,e2 V dº2,B)
+(¬cr2,e2 V d¹2,C)
+(cr2,e2 V c2 V ¬dº2,A V ¬dº2,B V ¬d¹2,C)
+
+(¬cr1,e3 V ¬c1)
+(¬cr1,e3 V d¹1,A)
+(¬cr1,e3 V dº1,B)
+(¬cr1,e3 V d¹1,C)
+(cr1,e3 V c1 V ¬d¹1,A V ¬dº1,B V ¬d¹1,C)
+
+(¬cr2,e3 V ¬c2)
+(¬cr2,e3 V d¹2,A)
+(¬cr2,e3 V dº2,B)
+(¬cr2,e3 V d¹2,C)
+(cr2,e3 V c2 V ¬d¹2,A V ¬dº2,B V ¬d¹2,C)
+
+(¬cr1,e1 V c1)
+(¬cr1,e1 V d¹1,A)
+(¬cr1,e1 V d¹1,B)
+(¬cr1,e1 V d¹1,C)
+(cr1,e1 V ¬c1 V ¬d¹1,A V ¬d¹1,B V ¬d¹1,C)
+
+(¬cr2,e1 V c2)
+(¬cr2,e1 V d¹2,A)
+(¬cr2,e1 V d¹2,B)
+(¬cr2,e1 V d¹2,C)
+(cr2,e1 V ¬c2 V ¬d¹2,A V ¬d¹2,B V ¬d¹2,C)
+
