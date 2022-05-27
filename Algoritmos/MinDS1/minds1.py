@@ -515,6 +515,8 @@ class minds1():
         numClauses = 0
         cnfClauses = ''
 
+        self.assignList = []
+
         # MONTANDO CLAUSULAS SOFT, ---------------------------------------------------------------------------------------------------
 
         # 1.1) ...
@@ -684,9 +686,7 @@ class minds1():
         # Ao final do for anterior, serão criadas mais N (total regras) variáveis c's
         additionalVariable += self.numClause
 
-        # 4.1 ) Restrições que garantem que uma regra cobre algum exemplo seja com y = 0 ou y = 1
-
-        # ...
+        # 4.3 ) Garante que a linha com y = 1 tem que ser verdadeira em alguma regra.
 
         # Definindo onde as variaveis cj,e vao iniciar (ainda sera incrementado + 1)
         cje = (self.numClause * self.columnInfo[-1][-1]) + (self.numClause * self.columnInfo[-1][-1]//2) + (2 * self.numClause * (self.columnInfo[-1][-1]//2))
@@ -706,8 +706,6 @@ class minds1():
             new_clause += "0\n"
             numClauses += 1
             cnfClauses += new_clause
-
-        # ...
 
         # MONTANDO CLAUSULAS HARD, ---------------------------------------------------------------------------------------------------
         
@@ -852,6 +850,182 @@ class minds1():
             # Resetando lj,r
             ljr = (self.numClause * self.columnInfo[-1][-1])               
         
+        # 4.1 ) Restrições que garantem que uma regra cobre algum exemplo seja com y = 0 ou y = 1
+
+        # Percorrendo todas as linhas e da matriz
+        for e in range(len(yVector)):
+
+            # Averiguando se a linha e tem previsao 0
+            if(yVector[e] == 0):
+                # Voltando para a primeira variavel c
+                c = (self.numClause * self.columnInfo[-1][-1]) + (self.numClause * self.columnInfo[-1][-1]//2) + (2 * self.numClause * (self.columnInfo[-1][-1]//2)) + (self.numClause * len(yVector)) + 1
+
+                # Voltando para a primeira variavel dº¹j,r
+                djr = (self.numClause * self.columnInfo[-1][-1]) + (self.numClause * (self.columnInfo[-1][-1]//2)) + 1
+
+                # Para cada regra j das N regras
+                for j in range(self.numClause):
+                    # Criando variavel cje
+                    cje += 1
+                    additionalVariable += 1
+                    # Criando uma clausula auxiliar que guardara os literais djr de cada coluna
+                    aux_clause = ''
+
+                    new_clause = str(topWeight) + ' '
+                    new_clause += '-' + str(cje) + ' '
+                    new_clause += '-' + str(c) + ' '
+                    aux_clause += str(c) + ' '
+                    c += 1
+                    new_clause += "0\n"
+                    numClauses += 1
+                    cnfClauses += new_clause
+
+                    # Para cada feature r das K features
+                    for r in range(len(self.columnInfo)):
+
+                        # Se a coluna for binaria
+                        if(self.columnInfo[r][0] == 1):
+                            new_clause = str(topWeight) + ' '
+
+                            new_clause += '-' + str(cje) + ' '
+                            # Averiguando se o valor na matriz na linha e nessa coluna é 0 ou 1
+                            # Caso seja 0, entao coloco dºjr. Caso seja 1, entao coloco d¹jr
+                            if(AMatrix[e][self.columnInfo[r][1] - 1] == 0):
+                                new_clause += '-' + str(djr) + ' '
+                                # Guardo o djr no aux_clause
+                                aux_clause += str(djr) + ' '
+                            else:
+                                new_clause += '-' + str(djr + (self.numClause * (self.columnInfo[-1][-1]//2))) + ' '
+                                # Guardo o djr no aux_clause
+                                aux_clause += str(djr + (self.numClause * (self.columnInfo[-1][-1]//2))) + ' '
+
+                            new_clause += "0\n"
+                            numClauses += 1
+                            cnfClauses += new_clause
+
+                            # Passo para o proximo dº¹j,r
+                            djr += 1
+
+                        # Se a coluna for categorica ou ordinal
+                        elif(self.columnInfo[r][0] == 2 or self.columnInfo[r][0] == 4):
+                            # Para cada subcoluna sc
+                            for sc in range(1, len(self.columnInfo[r])):
+                                new_clause = str(topWeight) + ' '
+
+                                new_clause += '-' + str(cje) + ' '
+                                # Averiguando se o valor na matriz na linha e nessa coluna é 0 ou 1
+                                # Caso seja 0, entao coloco dºjr. Caso seja 1, entao coloco d¹jr
+                                if(AMatrix[e][self.columnInfo[r][sc] - 1] == 0):
+                                    new_clause += '-' + str(djr) + ' '
+                                    # Guardo o djr no aux_clause
+                                    aux_clause += str(djr) + ' '
+                                else:
+                                    new_clause += '-' + str(djr + (self.numClause * (self.columnInfo[-1][-1]//2))) + ' '
+                                    # Guardo o djr no aux_clause
+                                    aux_clause += str(djr + (self.numClause * (self.columnInfo[-1][-1]//2))) + ' '
+
+                                new_clause += "0\n"
+                                numClauses += 1
+                                cnfClauses += new_clause
+
+                                # Passo para o proximo dº¹j,r
+                                djr += 1                   
+
+                        # Se não for binaria, categoria ou ordinal e coluna barrada
+                        else:
+                            continue   
+
+                    new_clause = str(topWeight) + ' '
+                    new_clause += aux_clause + str(cje) + ' '
+                    new_clause += "0\n"
+                    numClauses += 1
+                    cnfClauses += new_clause
+            # Averiguando se a linha e tem previsao 1
+            elif(yVector[e] == 1):
+                # Voltando para a primeira variavel c
+                c = (self.numClause * self.columnInfo[-1][-1]) + (self.numClause * self.columnInfo[-1][-1]//2) + (2 * self.numClause * (self.columnInfo[-1][-1]//2)) + (self.numClause * len(yVector)) + 1
+
+                # Voltando para a primeira variavel dº¹j,r
+                djr = (self.numClause * self.columnInfo[-1][-1]) + (self.numClause * (self.columnInfo[-1][-1]//2)) + 1
+
+                # Para cada regra j das N regras
+                for j in range(self.numClause):
+                    # Criando variavel cje
+                    cje += 1
+                    additionalVariable += 1
+                    # Criando uma clausula auxiliar que guardara os literais djr de cada coluna
+                    aux_clause = ''
+
+                    new_clause = str(topWeight) + ' '
+                    new_clause += '-' + str(cje) + ' '
+                    new_clause += str(c) + ' '
+                    aux_clause += '-' + str(c) + ' '
+                    c += 1
+                    new_clause += "0\n"
+                    numClauses += 1
+                    cnfClauses += new_clause
+
+                    # Para cada feature r das K features
+                    for r in range(len(self.columnInfo)):
+
+                        # Se a coluna for binaria
+                        if(self.columnInfo[r][0] == 1):
+                            new_clause = str(topWeight) + ' '
+
+                            new_clause += '-' + str(cje) + ' '
+                            # Averiguando se o valor na matriz na linha e nessa coluna é 0 ou 1
+                            # Caso seja 0, entao coloco dºjr. Caso seja 1, entao coloco d¹jr
+                            if(AMatrix[e][self.columnInfo[r][1] - 1] == 0):
+                                new_clause += '-' + str(djr) + ' '
+                                # Guardo o djr no aux_clause
+                                aux_clause += str(djr) + ' '
+                            else:
+                                new_clause += '-' + str(djr + (self.numClause * (self.columnInfo[-1][-1]//2))) + ' '
+                                # Guardo o djr no aux_clause
+                                aux_clause += str(djr + (self.numClause * (self.columnInfo[-1][-1]//2))) + ' '
+
+                            new_clause += "0\n"
+                            numClauses += 1
+                            cnfClauses += new_clause
+
+                            # Passo para o proximo dº¹j,r
+                            djr += 1
+
+                        # Se a coluna for categorica ou ordinal
+                        elif(self.columnInfo[r][0] == 2 or self.columnInfo[r][0] == 4):
+                            # Para cada subcoluna sc
+                            for sc in range(1, len(self.columnInfo[r])):
+                                new_clause = str(topWeight) + ' '
+
+                                new_clause += '-' + str(cje) + ' '
+                                # Averiguando se o valor na matriz na linha e nessa coluna é 0 ou 1
+                                # Caso seja 0, entao coloco dºjr. Caso seja 1, entao coloco d¹jr
+                                if(AMatrix[e][self.columnInfo[r][sc] - 1] == 0):
+                                    new_clause += '-' + str(djr) + ' '
+                                    # Guardo o djr no aux_clause
+                                    aux_clause += str(djr) + ' '
+                                else:
+                                    new_clause += '-' + str(djr + (self.numClause * (self.columnInfo[-1][-1]//2))) + ' '
+                                    # Guardo o djr no aux_clause
+                                    aux_clause += str(djr + (self.numClause * (self.columnInfo[-1][-1]//2))) + ' '
+
+                                new_clause += "0\n"
+                                numClauses += 1
+                                cnfClauses += new_clause
+
+                                # Passo para o proximo dº¹j,r
+                                djr += 1                   
+
+                        # Se não for binaria, categoria ou ordinal e coluna barrada
+                        else:
+                            continue   
+
+                    new_clause = str(topWeight) + ' '
+                    new_clause += aux_clause + str(cje) + ' '
+                    new_clause += "0\n"
+                    numClauses += 1
+                    cnfClauses += new_clause
+
         # write in wcnf format
         header = 'p wcnf ' + str(additionalVariable) + ' ' + str(numClauses) + ' ' + str(topWeight) + '\n'
         f = open(WCNFFile, 'w')

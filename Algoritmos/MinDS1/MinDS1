@@ -57,6 +57,8 @@ sendo 0 e o d¹ com as features sendo 1
 (¬d¹2,C V ¬l2,C)
 (s2,C V l2,C V d¹2,C)
 
+? l | 26 C
+
 3) Força que todas as regras de todas as linhas, cujo y seja = 0,
 sejam anuladas. E as que o y seja = 1, sejam positivadas
 
@@ -71,6 +73,8 @@ e2
 e3
 ¬c1 V (d¹1,A V dº1,B V d¹1,C)
 ¬c2 V (d¹2,A V dº2,B V d¹2,C)
+
+? l | 32 C
 
 4.1) Restrições que garantem que uma regra cobre algum exemplo seja com y = 0 ou y = 1
 
@@ -165,4 +169,14 @@ Sendo assim, as novas cláusulas ficarão da seguinte maneira:
 (¬cr2,e1 V d¹2,B)
 (¬cr2,e1 V d¹2,C)
 (cr2,e1 V ¬c2 V ¬d¹2,A V ¬d¹2,B V ¬d¹2,C)
+
+4.2) todos exemplo devem ser cobertos
+(cr1,e1 V cr2,e1)
+(cr1,e2 V cr2,e2)
+(cr1,e3 V cr2,e3)
+
+? l | 59 C
+
+5) restrição que evita dois termos iguais serem associados com classes distintas
+
 
