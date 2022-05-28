@@ -179,4 +179,51 @@ Sendo assim, as novas cláusulas ficarão da seguinte maneira:
 
 5) restrição que evita dois termos iguais serem associados com classes distintas
 
+(z1 V zA V zB V zC)
+
+(¬z1 V ¬c1 V c2)
+(¬z1 V c1 V ¬c2)
+
+(¬zA V ¬s1,A)
+(¬zA V ¬s2,A)
+(¬zA V l1,A)
+(¬zA V ¬l2,A)
+(¬zA V ¬l1,A)
+(¬zA V l2,A)
+
+(¬zB V ¬s1,B)
+(¬zB V ¬s2,B)
+(¬zB V l1,B)
+(¬zB V ¬l2,B)
+(¬zB V ¬l1,B)
+(¬zB V l2,B)
+
+(¬zC V ¬s1,C)
+(¬zC V ¬s2,C)
+(¬zC V l1,C)
+(¬zC V ¬l2,C)
+(¬zC V ¬l1,C)
+(¬zC V l2,C)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
