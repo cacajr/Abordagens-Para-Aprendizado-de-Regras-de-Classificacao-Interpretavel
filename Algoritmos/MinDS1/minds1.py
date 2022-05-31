@@ -1,3 +1,4 @@
+from tracemalloc import start
 import numpy as np
 import pandas as pd
 import warnings
@@ -515,7 +516,7 @@ class minds1():
         numClauses = 0
         cnfClauses = ''
 
-        self.assignList = []
+        # self.assignList = [] # usado para testar o uso direto dessa função: generateWCNFFile()
 
         # MONTANDO CLAUSULAS SOFT, ---------------------------------------------------------------------------------------------------
 
@@ -691,7 +692,7 @@ class minds1():
         # Definindo onde as variaveis cj,e vao iniciar (ainda sera incrementado + 1)
         cje = (self.numClause * self.columnInfo[-1][-1]) + (self.numClause * self.columnInfo[-1][-1]//2) + (2 * self.numClause * (self.columnInfo[-1][-1]//2))
         cje0 = cje + 1
-        cjef = cje + (self.numClause * len(yVector))
+        cjef = cje0 + (self.numClause * len(yVector))
 
         for cr in range(cje0, cjef, self.numClause):
             new_clause = str(self.dataFidelity) + ' '
@@ -848,7 +849,7 @@ class minds1():
                         continue
 
             # Resetando lj,r
-            ljr = (self.numClause * self.columnInfo[-1][-1])               
+            ljr = self.numClause * self.columnInfo[-1][-1]          
         
         # 4.1 ) Restrições que garantem que uma regra cobre algum exemplo seja com y = 0 ou y = 1
 
@@ -1025,6 +1026,287 @@ class minds1():
                     new_clause += "0\n"
                     numClauses += 1
                     cnfClauses += new_clause
+        
+        # 5 ) Restrição que evita dois termos iguais serem associados com classes distintas
+
+        # Definindo onde as variaveis c's começam e terminam
+        c0 = (self.numClause * self.columnInfo[-1][-1]) + (self.numClause * self.columnInfo[-1][-1]//2) + (2 * self.numClause * (self.columnInfo[-1][-1]//2)) + (self.numClause * len(yVector)) + 1
+        cf = c0 + self.numClause
+        # Criando as variaveis c's
+        cs = [c for c in range(c0, cf)]
+
+        # Definindo onde as variaveis auxiliares z's irão iniciar
+        z0 = (self.numClause * self.columnInfo[-1][-1]) + (self.numClause * self.columnInfo[-1][-1]//2) + (2 * self.numClause * (self.columnInfo[-1][-1]//2)) + (self.numClause * len(yVector)) + self.numClause + 1
+
+        # Definindo onde as variaveis l's começam e terminam
+        l0 = self.numClause * self.columnInfo[-1][-1] + 1
+        lf = l0 + (self.numClause * self.columnInfo[-1][-1]//2)
+        ls = [l for l in range(l0, lf)] # [l1,A, l1,B, ..., l2,A, l2,B...]
+
+        # Para cada variaval c que é criada para cada regra...
+        for ic, c in enumerate(cs):
+            # se ci
+            # (z1 V zA1 V zB1 V zC1)
+            # (¬z1 V ci)
+            # senão ci <-> ci+1
+            # (z1 V zA1 V zB1 V zC1)
+            # (¬z1 V ¬c1 V c2)
+            # (¬z1 V c1 V ¬c2)
+            if ic == 0 and ic == len(cs) - 1:   # ocorre quando se tem apenas uma regra
+                # criando variáveis z's
+                zs = [z for z in range(z0, z0 + self.columnInfo[-1][-1]//2 + 1)] # +1 por conta do z1 que será gerado pelo c1
+                z0 += len(zs) # as próximas variáveis z's, se houvessem, iniciariam daqui
+                additionalVariable += len(zs)
+
+                # (z1 V zA1 V zB1 V zC1)
+                new_clause = str(topWeight) + ' '
+
+                new_clause += str(zs[0]) + ' '
+                # Para cada feature r das K features (sem as barradas)
+                for zr in zs[1:]:
+                    new_clause += str(zr) + ' '
+
+                new_clause += "0\n"
+                numClauses += 1
+                cnfClauses += new_clause
+
+                # (¬z1 V c1)
+                new_clause = str(topWeight) + ' '
+
+                new_clause += '-' + str(zs[0]) + ' ' + str(c) + ' '
+
+                new_clause += "0\n"
+                numClauses += 1
+                cnfClauses += new_clause
+
+                # (¬zA1 V ¬s1,A)
+                # (¬zA1 V ¬l1,A)
+
+                # (¬zB1 V ¬s1,B)
+                # (¬zB1 V ¬l1,B)
+
+                # (¬zC1 V ¬s1,C)
+                # (¬zC1 V ¬l1,C)
+                # ...
+
+                # indice das variáveis z's que representam as features
+                iz = 1
+                # indice das variáveis l's
+                il = 0
+                # Para cada feature r das K features
+                for r in range(len(self.columnInfo)):
+
+                    # Se a coluna for binaria
+                    if(self.columnInfo[r][0] == 1):
+                        for each_clause in range(2):
+                            new_clause = str(topWeight) + ' '
+
+                            if each_clause == 0:
+                                new_clause += '-' + str(zs[iz]) + ' ' + '-' + str(self.columnInfo[r][1] + (ic * self.columnInfo[-1][-1])) + ' ' # ic equivale ao j
+                            else:
+                                new_clause += '-' + str(zs[iz]) + ' ' + '-' + str(ls[il]) + ' '
+                                il += 1
+
+                            new_clause += "0\n"
+                            numClauses += 1
+                            cnfClauses += new_clause
+                        
+                        iz += 1
+
+                    # Se a coluna for categorica ou ordinal
+                    elif(self.columnInfo[r][0] == 2 or self.columnInfo[r][0] == 4):
+                        # Para cada subcoluna sc
+                        for sc in range(1, len(self.columnInfo[r])):
+                            for each_clause in range(2):
+                                new_clause = str(topWeight) + ' '
+
+                                if each_clause == 0:
+                                    new_clause += '-' + str(zs[iz]) + ' ' + '-' + str(self.columnInfo[r][sc] + (ic * self.columnInfo[-1][-1])) + ' ' # ic equivale ao j
+                                else:
+                                    new_clause += '-' + str(zs[iz]) + ' ' + '-' + str(ls[il]) + ' '
+                                    il += 1
+
+                                new_clause += "0\n"
+                                numClauses += 1
+                                cnfClauses += new_clause 
+
+                            iz += 1              
+
+                    # Se não for binaria, categoria ou ordinal e coluna barrada
+                    else:
+                        continue
+
+            else:
+                # (ci <-> ci+1)
+                for inext_c, next_c in enumerate(cs[ic + 1:], start=ic+1): # ocorre quando tem duas ou mais regras
+
+                    # criando variáveis z's
+                    zs = [z for z in range(z0, z0 + self.columnInfo[-1][-1]//2 + 1)] # +1 por conta do z1 que será gerado pelo c1
+                    z0 += len(zs) # as próximas variáveis z's vão iniciar daqui
+                    additionalVariable += len(zs)
+
+                    # (z1 V zA1 V zB1 V zC1)
+                    new_clause = str(topWeight) + ' '
+
+                    new_clause += str(zs[0]) + ' '
+                    # Para cada feature r das K features (sem as barradas)
+                    for zr in zs[1:]:
+                        new_clause += str(zr) + ' '
+
+                    new_clause += "0\n"
+                    numClauses += 1
+                    cnfClauses += new_clause
+
+                    # (¬z1 V ¬c1 V c2)
+                    # (¬z1 V c1 V ¬c2)
+                    for each_clause in range(2):
+                        new_clause = str(topWeight) + ' '
+                        new_clause += '-' + str(zs[0]) + ' '
+
+                        if each_clause == 0:
+                            new_clause += '-' + str(c) + ' ' + str(next_c) + ' '
+                        else:
+                            new_clause += str(c) + ' ' + '-' + str(next_c) + ' '
+
+                        new_clause += "0\n"
+                        numClauses += 1
+                        cnfClauses += new_clause
+
+                    # (¬zA1 V ¬s1,A)
+                    # (¬zA1 V ¬s2,A)
+                    # (¬zA1 V l1,A)
+                    # (¬zA1 V ¬l2,A)
+                    # (¬zA1 V ¬l1,A)
+                    # (¬zA1 V l2,A)
+                    # ...
+
+                    # indice das variáveis z's que representam as features
+                    iz = 1
+                    # Para cada feature r das K features
+                    for r in range(len(self.columnInfo)):
+
+                        # Se a coluna for binaria
+                        if(self.columnInfo[r][0] == 1):
+                            # (¬zA1 V ¬s1,A)
+                            # (¬zA1 V ¬s2,A)
+                            new_clause = str(topWeight) + ' '
+
+                            new_clause += '-' + str(zs[iz]) + ' ' + '-' + str(self.columnInfo[r][1] + (ic * self.columnInfo[-1][-1])) + ' ' # ieach_rule equivale ao j, mas começando de um ponto específico -> ic
+                            
+                            new_clause += "0\n"
+                            numClauses += 1
+                            cnfClauses += new_clause
+
+                            new_clause = str(topWeight) + ' '
+
+                            new_clause += '-' + str(zs[iz]) + ' ' + '-' + str(self.columnInfo[r][1] + (inext_c * self.columnInfo[-1][-1])) + ' ' # ieach_rule equivale ao j, mas começando de um ponto específico -> ic
+                            
+                            new_clause += "0\n"
+                            numClauses += 1
+                            cnfClauses += new_clause
+
+                            # (¬zA1 V l1,A)
+                            new_clause = str(topWeight) + ' '
+
+                            new_clause += '-' + str(zs[iz]) + ' ' + str(ls[ic]) + ' '
+                            
+                            new_clause += "0\n"
+                            numClauses += 1
+                            cnfClauses += new_clause
+
+                            # (¬zA1 V ¬l2,A)
+                            new_clause = str(topWeight) + ' '
+
+                            new_clause += '-' + str(zs[iz]) + ' ' + '-' + str(ls[inext_c + self.columnInfo[-1][-1]//2]) + ' '
+                            
+                            new_clause += "0\n"
+                            numClauses += 1
+                            cnfClauses += new_clause
+                            
+                            # (¬zA1 V ¬l1,A)
+                            new_clause = str(topWeight) + ' '
+
+                            new_clause += '-' + str(zs[iz]) + ' ' + '-' + str(ls[ic]) + ' '
+                            
+                            new_clause += "0\n"
+                            numClauses += 1
+                            cnfClauses += new_clause
+
+                            # (¬zA1 V l2,A)
+                            new_clause = str(topWeight) + ' '
+
+                            new_clause += '-' + str(zs[iz]) + ' ' + str(ls[inext_c + self.columnInfo[-1][-1]//2]) + ' '
+                            
+                            new_clause += "0\n"
+                            numClauses += 1
+                            cnfClauses += new_clause
+
+                            iz += 1
+
+                        # Se a coluna for categorica ou ordinal
+                        elif(self.columnInfo[r][0] == 2 or self.columnInfo[r][0] == 4):
+                            # Para cada subcoluna sc
+                            for sc in range(1, len(self.columnInfo[r])):
+                                # (¬zA1 V ¬s1,A)
+                                # (¬zA1 V ¬s2,A)
+                                new_clause = str(topWeight) + ' '
+
+                                new_clause += '-' + str(zs[iz]) + ' ' + '-' + str(self.columnInfo[r][1] + (ic * self.columnInfo[-1][-1])) + ' ' # ieach_rule equivale ao j, mas começando de um ponto específico -> ic
+                                
+                                new_clause += "0\n"
+                                numClauses += 1
+                                cnfClauses += new_clause
+
+                                new_clause = str(topWeight) + ' '
+
+                                new_clause += '-' + str(zs[iz]) + ' ' + '-' + str(self.columnInfo[r][1] + (inext_c * self.columnInfo[-1][-1])) + ' ' # ieach_rule equivale ao j, mas começando de um ponto específico -> ic
+                                
+                                new_clause += "0\n"
+                                numClauses += 1
+                                cnfClauses += new_clause
+
+                                # (¬zA1 V l1,A)
+                                new_clause = str(topWeight) + ' '
+
+                                new_clause += '-' + str(zs[iz]) + ' ' + str(ls[ic]) + ' '
+                                
+                                new_clause += "0\n"
+                                numClauses += 1
+                                cnfClauses += new_clause
+
+                                # (¬zA1 V ¬l2,A)
+                                new_clause = str(topWeight) + ' '
+
+                                new_clause += '-' + str(zs[iz]) + ' ' + '-' + str(ls[inext_c + self.columnInfo[-1][-1]//2]) + ' '
+                                
+                                new_clause += "0\n"
+                                numClauses += 1
+                                cnfClauses += new_clause
+                                
+                                # (¬zA1 V ¬l1,A)
+                                new_clause = str(topWeight) + ' '
+
+                                new_clause += '-' + str(zs[iz]) + ' ' + '-' + str(ls[ic]) + ' '
+                                
+                                new_clause += "0\n"
+                                numClauses += 1
+                                cnfClauses += new_clause
+
+                                # (¬zA1 V l2,A)
+                                new_clause = str(topWeight) + ' '
+
+                                new_clause += '-' + str(zs[iz]) + ' ' + str(ls[inext_c + self.columnInfo[-1][-1]//2]) + ' '
+                                
+                                new_clause += "0\n"
+                                numClauses += 1
+                                cnfClauses += new_clause
+
+                                iz += 1 
+
+                        # Se não for binaria, categoria ou ordinal e coluna barrada
+                        else:
+                            continue
+
 
         # write in wcnf format
         header = 'p wcnf ' + str(additionalVariable) + ' ' + str(numClauses) + ' ' + str(topWeight) + '\n'

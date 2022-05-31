@@ -631,7 +631,7 @@ class an_alternative_model():
         # Definindo onde as variaveis cj,e vao iniciar (ainda sera incrementado + 1)
         cje = (self.numClause * self.columnInfo[-1][-1]) + (self.numClause * self.columnInfo[-1][-1]//2) + (2 * self.numClause * (self.columnInfo[-1][-1]//2))
         cje0 = cje + 1
-        cjef = cje + (self.numClause * yVector.count(1))
+        cjef = cje0 + (self.numClause * yVector.count(1))
 
         for cr in range(cje0, cjef, self.numClause):
             new_clause = str(self.dataFidelity) + ' '
