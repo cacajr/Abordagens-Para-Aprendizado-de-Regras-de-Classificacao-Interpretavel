@@ -436,6 +436,10 @@ class an_alternative_model():
             self.trainingError += len(TrueErrors)
             self.selectedFeatureIndex = TrueRules
 
+        # print(f'literals except sjr: {fields[(self.numClause * (self.columnInfo[-1][-1]//2))+(self.numClause * (self.columnInfo[-1][-1]//2)):]}')
+        # print(f'xhat: {self.xhat}')
+        # print(f'xhatField: {self.xhatField}')
+
         return fields[(self.numClause * (self.columnInfo[-1][-1]//2))+(self.numClause * (self.columnInfo[-1][-1]//2)):]
 
     def partitionWithEqualProbability(self, X, y):
