@@ -389,6 +389,8 @@ class minds1():
         first_literal_c_index = (self.numClause * self.columnInfo[-1][-1]) + (self.numClause * self.columnInfo[-1][-1]//2) + (2 * self.numClause * (self.columnInfo[-1][-1]//2)) + (self.numClause * len(y))
         self.literals_cs_values = fields[first_literal_c_index:first_literal_c_index + self.numClause]
 
+        # print(self.literals_cs_values)
+
         # Tirando possiveis variaveis postas pelo solver
 
         # Para cada regra j das N regras
@@ -1461,9 +1463,9 @@ class minds1():
             generatedRule += rule_str
             if (i < self.numClause - 1):
                 if (self.ruleType == "DNF"):
-                    generatedRule += ' ) or \n( '
+                    generatedRule += f' ) -> {0 if int(self.literals_cs_values[i]) < 0 else 1} \n( '
                 if (self.ruleType == 'CNF'):
-                    generatedRule += ' ) and \n( '
-        generatedRule += ')'
+                    generatedRule += f' ) -> {0 if int(self.literals_cs_values[i]) < 0 else 1} \n( '
+        generatedRule += f' ) -> {0 if int(self.literals_cs_values[i]) < 0 else 1}'
 
         return generatedRule
