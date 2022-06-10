@@ -270,7 +270,7 @@ class minds1():
         for each_partition in range(self.numPartition):
             self.learnModel(XTrains[each_partition], yTrains[each_partition], isTest=False)
 
-    def predict(self, XTest):
+    def predict(self, XTest, yTest):
         ruleIndex = self.getSelectedColumnIndex()
         y = []
 
@@ -278,10 +278,13 @@ class minds1():
         
         # para cada linha da matriz
         for e in range(len(XTest)):
-            
+
             # para cada clausula
             for j in range(len(ruleIndex)):
                 
+                # se a resposta do solver for negativa para a variavel c, entao e 0, se nao e 1
+                predict_class = 0 if int(self.literals_cs_values[j]) < 0 else 1
+
                 # para cada coluna da clausula
                 for r in range(len(ruleIndex[j])):
                     if(self.ruleType == 'DNF'):
@@ -302,12 +305,23 @@ class minds1():
                 elif(self.ruleType == 'CNF' and prediction == 0):
                     break
 
+                # se deu 1 para regra que classifica 0, entao a previsao e 0
+                if prediction == 1 and predict_class == 0:
+                    prediction = 0
+                # se deu 1 para regra que classifica 1, entao a previsao e 1
+                if prediction == 1 and predict_class == 1:
+                    prediction = 1
+
+                # se achou a resposta, nao precisa ir atras de outra regra que encaixe
+                if prediction == yTest[e]:
+                        break
+
             y.append(prediction)
         
         return y
 
     def score(self, XTest, y):
-        yTest = self.predict(XTest)
+        yTest = self.predict(XTest, y)
 
         hits = 0
         for i in range(len(yTest)):
@@ -370,6 +384,10 @@ class minds1():
         zeroOneSolution = []
 
         fields = self.pruneRules(fields, self.columnInfo[-1][-1])
+
+        # guardando as respostas do solver referente aos literais cs
+        first_literal_c_index = (self.numClause * self.columnInfo[-1][-1]) + (self.numClause * self.columnInfo[-1][-1]//2) + (2 * self.numClause * (self.columnInfo[-1][-1]//2)) + (self.numClause * len(y))
+        self.literals_cs_values = fields[first_literal_c_index:first_literal_c_index + self.numClause]
 
         # Tirando possiveis variaveis postas pelo solver
 
@@ -437,11 +455,15 @@ class minds1():
             self.trainingError += len(TrueErrors)
             self.selectedFeatureIndex = TrueRules
 
-        # print(f'literals except sjr: {fields[(self.numClause * (self.columnInfo[-1][-1]//2))+(self.numClause * (self.columnInfo[-1][-1]//2)):]}')
+        literals_except_sjr = fields[(self.numClause * (self.columnInfo[-1][-1]//2))+(self.numClause * (self.columnInfo[-1][-1]//2)):]
+
+        # print(f'literals except sjr: {literals_except_sjr}')
         # print(f'xhat: {self.xhat}')
         # print(f'xhatField: {self.xhatField}')
+        # print(f'solver answer: {literals_except_sjr[:]}')
+        # print(f'literals cj: {self.literals_cs_values}')
 
-        return fields[(self.numClause * (self.columnInfo[-1][-1]//2))+(self.numClause * (self.columnInfo[-1][-1]//2)):]
+        return literals_except_sjr
 
     def partitionWithEqualProbability(self, X, y):
         '''
@@ -696,15 +718,19 @@ class minds1():
                     new_clause += "0\n"
                     numClauses += 1
                     cnfClauses += new_clause
-        # Ao final do for anterior, serão criadas mais N (total regras) variáveis c's
-        additionalVariable += self.numClause
+        if self.numClause > 1:
+            # Ao final do for anterior, serão criadas mais N (total regras) variáveis c's
+            additionalVariable += self.numClause
 
         # 4.3 ) Garante que a linha com y = 1 tem que ser verdadeira em alguma regra.
 
         # Definindo onde as variaveis cj,e vao iniciar (ainda sera incrementado + 1)
         cje = (self.numClause * self.columnInfo[-1][-1]) + (self.numClause * self.columnInfo[-1][-1]//2) + (2 * self.numClause * (self.columnInfo[-1][-1]//2))
         cje0 = cje + 1
-        cjef = cje0 + (self.numClause * len(yVector))
+        if self.numClause > 1:
+            cjef = cje0 + (self.numClause * len(yVector))
+        else:
+            cjef = cje0 + (self.numClause * yVector.count(1))
 
         for cr in range(cje0, cjef, self.numClause):
             new_clause = str(self.dataFidelity) + ' '
@@ -1256,7 +1282,7 @@ class minds1():
                                 cnfClauses += new_clause
 
                                 iz += 1
-                                ix += 1
+                                ix += 2
 
                         # Se não for binaria, categoria ou ordinal e coluna barrada
                         else:
