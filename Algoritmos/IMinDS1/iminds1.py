@@ -10,8 +10,8 @@ from sklearn.model_selection import train_test_split
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
-class minds1():
-    def __init__(self, numPartition=-1, numLinesPerPartition=100000, numClause=2, dataFidelity=1, weightFeature=1, solver="open-wbo", ruleType="DNF",
+class iminds1():
+    def __init__(self, numPartition=-1, numLinesPerPartition=16, numClause=2, dataFidelity=10, weightFeature=1, solver="open-wbo", ruleType="DNF",
                  workDir=".", timeOut=1024, columnInfo=[], columns=[]):
         '''
 
@@ -281,7 +281,7 @@ class minds1():
 
             # para cada clausula
             for j in range(len(ruleIndex)):
-
+                
                 # para cada coluna da clausula
                 for r in range(len(ruleIndex[j])):
                     if(self.ruleType == 'DNF'):
@@ -539,9 +539,65 @@ class minds1():
         numClauses = 0
         cnfClauses = ''
 
-        self.assignList = [] # usado para testar o uso direto dessa função: generateWCNFFile()
+        # self.assignList = [] # usado para testar o uso direto dessa função: generateWCNFFile()
 
         # MONTANDO CLAUSULAS SOFT, ---------------------------------------------------------------------------------------------------
+
+        # 1.1) ...
+
+        # Se o assignList estiver vazio, entao quer dizer que estamos na primeira particao de dados,
+        # logo devemos CRIAR os literais que representam as colunas
+        if(self.assignList == []):  
+
+            # Para cada regra j das N regras
+            for j in range(self.numClause):
+
+                # Para cada feature r das K features
+                for r in range(len(self.columnInfo)):
+
+                    # Se a coluna for binaria
+                    if(self.columnInfo[r][0] == 1):
+                        new_clause = str(topWeight) + ' '
+
+                        # Criando as variaveis ¬sjr
+                        new_clause += str(self.columnInfo[r][1] + (j * self.columnInfo[-1][-1])) + ' '
+
+                        new_clause += "0\n"
+                        numClauses += 1
+                        cnfClauses += new_clause
+
+                    # Se a coluna for categorica ou ordinal
+                    elif(self.columnInfo[r][0] == 2 or self.columnInfo[r][0] == 4):
+                        # Para cada subcoluna sc
+                        for sc in range(1, len(self.columnInfo[r])):
+                            new_clause = str(topWeight) + ' '
+
+                            # Criando as variaveis ¬sjr
+                            new_clause += str(self.columnInfo[r][sc] + (j * self.columnInfo[-1][-1])) + ' '
+
+                            new_clause += "0\n"
+                            numClauses += 1
+                            cnfClauses += new_clause
+
+                    # Se não for binaria, categorica ou ordinal e coluna barrada
+                    else:
+                        continue
+
+            # Somando o peso das soft's criadas ate aqui
+            topWeight = (self.numClause * (self.columnInfo[-1][-1]//2))
+
+        # Se entrar aqui, o assignList guarda literais da ultima particao
+        else:
+            # Percorrendo os literais que representam as colunas e suas polaridades
+            for l in self.assignList[:(self.numClause * (self.columnInfo[-1][-1]//2) * 2)]:
+                new_clause = str(topWeight) + ' '
+                new_clause += l + ' '
+                new_clause += "0\n"
+                numClauses += 1
+                cnfClauses += new_clause
+            
+            # Somando o peso das soft's criadas até aqui
+            topWeight = (self.numClause * (self.columnInfo[-1][-1]//2) * 2)
 
         # 3.1) Força que todas as regras de todas as linhas cujo y seja = 0, sejam anuladas.
         # 3.2) Força que todas as regras de todas as linhas cujo y seja = 1, sejam positivadas.
@@ -690,7 +746,7 @@ class minds1():
         # MONTANDO CLAUSULAS HARD, ---------------------------------------------------------------------------------------------------
         
         # Fazendo com que o topWeight seja maior que a soma das softClauses para pesificar as hard's
-        topWeight = 1 # não existe mais hard, todas agora são!
+        topWeight += 1 
 
         # 1) Garante que pelo menos uma feature esteja em uma regra
 
