@@ -281,35 +281,44 @@ class iminds1():
 
             # para cada clausula
             for j in range(len(ruleIndex)):
-                
-                # para cada coluna da clausula
-                for r in range(len(ruleIndex[j])):
-                    if(self.ruleType == 'DNF'):
-                        if(XTest[e][ ruleIndex[j][r] ] == 0):
-                            prediction = 0
-                            break
-                        else:
-                            prediction = 1
-                    elif(self.ruleType == 'CNF'):
-                        if(XTest[e][ ruleIndex[j][r] ] == 1):
-                            prediction = 1
-                            break
-                        else:
-                            prediction = 0
 
                 # se a resposta do solver for negativa para a variavel c, entao e 0, se nao e 1
                 predict_class = 0 if int(self.literals_cs_values[j]) < 0 else 1
 
-                # se deu 1 para regra que classifica 0, entao a previsao e 0
-                if prediction == 1 and predict_class == 0:
-                    prediction = 0
-                # se deu 1 para regra que classifica 1, entao a previsao e 1
-                if prediction == 1 and predict_class == 1:
-                    prediction = 1
+                # se a predição dessa linha for a mesma que essa regra tenta prever, então...
+                if yTest[e] == predict_class:
+                    # para cada coluna da clausula
+                    for r in range(len(ruleIndex[j])):
+                        if(self.ruleType == 'DNF'):
+                            if(XTest[e][ ruleIndex[j][r] ] == 0):
+                                prediction = 0
+                                break
+                            else:
+                                prediction = 1
+                        elif(self.ruleType == 'CNF'):
+                            if(XTest[e][ ruleIndex[j][r] ] == 1):
+                                prediction = 1
+                                break
+                            else:
+                                prediction = 0
 
-                # se achou a resposta, nao precisa ir atras de outra regra que encaixe
-                if prediction == yTest[e]:
-                    break
+                    # se deu 1 para regra que classifica 0, entao a previsao e 0
+                    if prediction == 1 and predict_class == 0:
+                        prediction = 0
+                    # se deu 1 para regra que classifica 1, entao a previsao e 1
+                    elif prediction == 1 and predict_class == 1:
+                        prediction = 1
+                    
+                    # se deu 0 para regra que classifica 0, entao a previsao e 1
+                    elif prediction == 0 and predict_class == 0:
+                        prediction = 1
+                    # se deu 0 para regra que classifica 1, entao a previsao e 0
+                    elif prediction == 0 and predict_class == 1:
+                        prediction = 0
+
+                    # se achou a resposta, nao precisa ir atras de outra regra que encaixe
+                    if prediction == yTest[e]:
+                        break
 
             y.append(prediction)
         
